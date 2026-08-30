@@ -1,0 +1,24 @@
+.page { display: flex; flex-direction: column; gap: 24px; }
+.pageHeader { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.skylineCard { padding: 24px; }
+.skyline { display: flex; align-items: flex-end; gap: 8px; height: 180px; padding: 0 16px; }
+.skylineBuilding { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; height: 100%; justify-content: flex-end; }
+.skylineTower { width: 100%; border-radius: 3px 3px 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; transition: height 0.8s var(--ease-smooth); min-width: 20px; }
+.skylineHeight { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.8); font-family: var(--font-mono); }
+.skylineLabel { font-size: 9px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
+.rankTable { overflow: hidden; }
+.tableHeader, .tableRow { display: grid; grid-template-columns: 60px 1.5fr 1fr 80px 60px 90px 80px 90px 80px; gap: 0; padding: 12px 20px; align-items: center; }
+.tableHeader { background: var(--bg-elevated); border-bottom: 1px solid var(--border-subtle); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.tableRow { border-bottom: 1px solid var(--border-subtle); transition: background 0.15s; font-size: 14px; }
+.tableRow:hover { background: var(--bg-elevated); }
+.tableRowMe { background: rgba(67,97,238,0.08) !important; border-left: 3px solid var(--electric-blue); }
+.tableRowFirst { background: rgba(255,214,10,0.05) !important; }
+.thRank, .tdRank { font-size: 16px; font-weight: 700; }
+.tdTeam { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.youBadge { background: var(--electric-blue); color: white; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em; }
+.tdCity { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.cityDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+@media (max-width: 1024px) {
+  .tableHeader, .tableRow { grid-template-columns: 50px 1.2fr 0.8fr 70px 60px; }
+  .thValue, .tdValue, .thStability, .tdStability, .thFunds, .tdFunds, .thScore, .tdScore { display: none; }
+}

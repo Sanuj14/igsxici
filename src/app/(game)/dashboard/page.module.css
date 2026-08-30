@@ -1,0 +1,126 @@
+.dashboard { display: flex; flex-direction: column; gap: 24px; }
+
+.pageHeader {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.pageTitle { color: var(--text-primary); }
+.headerActions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Stats Row */
+.statsRow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.statCard { padding: 20px; display: flex; align-items: center; gap: 16px; }
+.statIcon { font-size: 28px; flex-shrink: 0; }
+.statValue { font-size: 22px; font-weight: 700; font-family: var(--font-mono); line-height: 1.2; }
+.statLabel { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-top: 2px; }
+
+/* Main grid */
+.mainGrid { display: grid; grid-template-columns: 1fr 380px; gap: 16px; }
+.rightCol { display: flex; flex-direction: column; gap: 16px; }
+
+/* Card header */
+.cardHeader {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Tower */
+.towerCard { padding: 20px; }
+.towerViz { min-height: 200px; display: flex; align-items: flex-end; justify-content: center; padding: 16px 0; }
+.towerBuilding { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 400px; }
+.towerScrollWrap {
+  width: 100%;
+  max-height: 340px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+  padding-bottom: 4px;
+}
+.towerFloors { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; padding-top: 8px; }
+.towerFloor {
+  height: 24px; border-radius: 3px 3px 0 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s var(--ease-bounce);
+  cursor: default;
+  position: relative;
+}
+.towerFloor:hover { opacity: 1 !important; transform: scaleX(1.02); }
+.towerFloorLabel { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+.towerGround { width: 120%; height: 6px; background: var(--border-subtle); border-radius: 3px; margin-top: 2px; }
+.towerEmpty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px; text-align: center; color: var(--text-muted); }
+
+.towerStats { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+.towerStatItem { display: flex; align-items: center; gap: 8px; }
+.towerStatLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-muted); width: 100px; flex-shrink: 0; }
+
+/* Events */
+.eventsCard { padding: 20px; }
+.eventsList { display: flex; flex-direction: column; gap: 8px; }
+.eventItem { padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+.eventDisaster { background: rgba(239,35,60,0.08); border-color: rgba(239,35,60,0.25); }
+.eventBonus { background: rgba(6,214,160,0.08); border-color: rgba(6,214,160,0.25); }
+.eventMisc { background: rgba(67,97,238,0.08); border-color: rgba(67,97,238,0.25); }
+.eventTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.eventTitle { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.eventDesc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+/* Inventory */
+.inventoryCard { padding: 20px; }
+.inventoryGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.inventoryItem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+.inventoryIcon { font-size: 20px; }
+.inventoryInfo { display: flex; flex-direction: column; gap: 2px; }
+.inventoryName { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.inventoryQty { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--neon-lime); }
+
+/* Notifications */
+.notifCard { padding: 20px; }
+.notifList { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+.notifItem { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border-radius: var(--radius-md); background: var(--bg-elevated); }
+.notifUnread { background: rgba(67,97,238,0.1); border: 1px solid rgba(67,97,238,0.2); }
+.notifContent { display: flex; flex-direction: column; gap: 2px; }
+.notifTitle { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.notifMsg { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+/* Market preview */
+.marketPreview { padding: 20px; }
+.marketRow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.marketItem {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 8px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  text-align: center;
+}
+.marketIcon { font-size: 24px; }
+.marketName { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+.marketPrice { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--neon-lime); }
+.marketStock { font-size: 10px; color: var(--text-muted); }
+
+/* Empty state */
+.emptyState {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 24px; text-align: center;
+  color: var(--text-muted); font-size: 14px;
+}
+
+@media (max-width: 1200px) {
+  .mainGrid { grid-template-columns: 1fr; }
+  .statsRow { grid-template-columns: repeat(2, 1fr); }
+  .marketRow { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 640px) {
+  .statsRow { grid-template-columns: 1fr 1fr; }
+  .inventoryGrid { grid-template-columns: 1fr; }
+  .marketRow { grid-template-columns: repeat(2, 1fr); }
+}

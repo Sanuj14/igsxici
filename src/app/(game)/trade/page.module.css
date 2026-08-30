@@ -1,0 +1,24 @@
+.page { display: flex; flex-direction: column; gap: 24px; }
+.pageHeader { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.resultMsg { padding: 12px 16px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; background: rgba(6,214,160,0.1); color: var(--status-safe); border: 1px solid rgba(6,214,160,0.3); }
+.tradeForm { padding: 24px; }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.formRow { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.tradeColumns { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+.tradeCol { display: flex; flex-direction: column; gap: 10px; }
+.colHeader { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.tradeArrow { font-size: 28px; color: var(--text-muted); text-align: center; }
+.section { display: flex; flex-direction: column; gap: 12px; }
+.sectionTitle { font-size: 18px; font-weight: 700; }
+.tradeList { display: flex; flex-direction: column; gap: 10px; }
+.tradeItem { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.tradeItemHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.fromLabel { font-size: 14px; color: var(--text-secondary); }
+.tradeMessage { font-size: 13px; color: var(--text-muted); font-style: italic; }
+.tradeDetails { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
+.tradeOfferBox { display: flex; flex-direction: column; gap: 6px; padding: 12px; background: var(--bg-elevated); border-radius: var(--radius-md); border: 1px solid; font-size: 13px; color: var(--text-secondary); }
+.tradeBoxLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; }
+.tradeArrowSmall { font-size: 20px; color: var(--text-muted); text-align: center; }
+.tradeActions { display: flex; gap: 10px; justify-content: flex-end; }
+@media (max-width: 768px) { .tradeColumns { grid-template-columns: 1fr; } .tradeDetails { grid-template-columns: 1fr; } .tradeArrow, .tradeArrowSmall { display: none; } }

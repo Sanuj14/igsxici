@@ -1,0 +1,110 @@
+.page {
+  min-height: 100vh;
+  background: #0A0A0F;
+  color: white;
+  font-family: var(--font-body);
+  padding: 32px;
+}
+.header {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 32px;
+  margin-bottom: 32px;
+  align-items: start;
+}
+.headerLeft { display: flex; flex-direction: column; gap: 12px; }
+.brand { font-size: 14px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-muted); }
+.title { font-size: clamp(32px, 5vw, 64px); font-weight: 700; letter-spacing: -0.03em; }
+.subtitle { font-size: 15px; color: var(--text-secondary); line-height: 1.6; max-width: 500px; }
+.selectedPreview {}
+.selectedCity {
+  background: var(--bg-card);
+  border: 2px solid;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.selectedDot { width: 12px; height: 12px; border-radius: 50%; }
+.selectedName { font-size: 22px; font-weight: 700; }
+.selectedDesc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.selectedBonus {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(204,255,0,0.1);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(204,255,0,0.3);
+  font-size: 13px;
+}
+.selectedBonus strong { color: var(--neon-lime); font-family: var(--font-mono); font-size: 16px; }
+.selectedTags { display: flex; flex-direction: column; gap: 10px; }
+.tagsGroup { display: flex; flex-direction: column; gap: 6px; }
+.tagLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; }
+.tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 4px; margin-top: 2px; }
+.tagGreen { background: rgba(6,214,160,0.15); color: var(--status-safe); border: 1px solid rgba(6,214,160,0.3); }
+.tagRed { background: rgba(255,45,120,0.1); color: var(--status-critical); border: 1px solid rgba(255,45,120,0.3); }
+.error { background: rgba(255,45,120,0.1); border: 1px solid var(--hot-pink); color: var(--hot-pink); padding: 10px; border-radius: var(--radius-md); font-size: 13px; }
+.mapContainer { margin-bottom: 32px; }
+.mapTitle { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 16px; }
+.indiaMap {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  height: 400px;
+  overflow: hidden;
+}
+.indiaSvg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cityPin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  z-index: 2;
+}
+.cityPinDot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+  transition: all 0.2s;
+}
+.cityPin:hover .cityPinDot { transform: scale(1.4); border-color: white; }
+.cityPinActive .cityPinDot { transform: scale(1.8); border-color: white; box-shadow: 0 0 12px var(--city-color, white); }
+.cityPinLabel { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.8); white-space: nowrap; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+.citiesGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.cityCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cityCard:hover { border-color: var(--city-color, var(--border-medium)); background: var(--bg-card-hover); transform: translateY(-2px); }
+.cityCardActive { border-color: var(--city-color, var(--border-medium)) !important; box-shadow: 0 0 20px rgba(255,255,255,0.1); background: var(--bg-elevated) !important; }
+.cityCardTop { display: flex; align-items: center; gap: 8px; }
+.cityCardDot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.cityCardName { font-size: 14px; font-weight: 700; color: white; flex: 1; }
+.coastalBadge { font-size: 10px; color: var(--cyan); background: rgba(0,180,216,0.1); border: 1px solid rgba(0,180,216,0.3); padding: 2px 6px; border-radius: 4px; }
+.cityCardBonus { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--neon-lime); }
+.cityCardAdvantages { display: flex; flex-direction: column; gap: 3px; }
+.advTag { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
+@media (max-width: 1024px) {
+  .header { grid-template-columns: 1fr; }
+  .citiesGrid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 640px) {
+  .page { padding: 16px; }
+  .citiesGrid { grid-template-columns: repeat(2, 1fr); }
+  .indiaMap { height: 250px; }
+}

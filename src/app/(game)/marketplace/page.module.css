@@ -1,0 +1,35 @@
+.page { display: flex; flex-direction: column; gap: 24px; }
+.pageHeader { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.fundsDisplay { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.fundsValue { font-size: 28px; font-weight: 700; font-family: var(--font-mono); color: var(--yellow); }
+.resourceGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.resourceCard { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.resourceTop { display: flex; gap: 16px; }
+.resourceIcon { font-size: 36px; flex-shrink: 0; }
+.resourceInfo { flex: 1; }
+.resourceName { font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.resourceDesc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.priceRow { display: flex; gap: 12px; }
+.priceBox, .stockBox, .invBox {
+  flex: 1; display: flex; flex-direction: column; gap: 4px;
+  padding: 10px; background: var(--bg-elevated); border-radius: var(--radius-md);
+  text-align: center;
+}
+.priceLabel { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.priceValue { font-size: 16px; font-weight: 700; font-family: var(--font-mono); color: var(--neon-lime); }
+.priceUnit { font-size: 10px; color: var(--text-muted); }
+.stockValue { font-size: 16px; font-weight: 700; font-family: var(--font-mono); }
+.invValue { font-size: 16px; font-weight: 700; font-family: var(--font-mono); color: var(--electric-blue); }
+.modeToggle { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-medium); border-radius: var(--radius-md); overflow: hidden; }
+.modeBtn { padding: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; background: transparent; border: none; color: var(--text-muted); transition: all 0.15s; font-family: var(--font-body); }
+.modeBuyActive { background: var(--hot-pink); color: white; }
+.modeSellActive { background: var(--neon-lime); color: var(--bg-void); }
+.qtyRow { display: flex; align-items: center; gap: 8px; }
+.qtyInput { text-align: center; font-weight: 700; font-family: var(--font-mono); }
+.totalRow { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+.msg { padding: 8px 12px; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; }
+.msgOk { background: rgba(6,214,160,0.1); color: var(--status-safe); border: 1px solid rgba(6,214,160,0.3); }
+.msgErr { background: rgba(255,45,120,0.1); color: var(--status-critical); border: 1px solid rgba(255,45,120,0.3); }
+.actionBtn { width: 100%; justify-content: center; }
+@media (max-width: 1100px) { .resourceGrid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .resourceGrid { grid-template-columns: 1fr; } }

@@ -1,0 +1,124 @@
+.adminPage {
+  min-height: 100vh;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+}
+.loading {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; gap: 16px; background: var(--bg-void);
+}
+.loadingText { font-size: 14px; font-weight: 700; letter-spacing: 0.2em; color: var(--text-muted); }
+.adminHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.adminBrand { display: flex; align-items: center; gap: 12px; }
+.adminTitle { font-size: 14px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-primary); }
+.adminSubtitle { font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; }
+.adminHeaderRight { display: flex; align-items: center; gap: 16px; }
+.liveIndicator { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--status-safe); }
+.liveDot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-safe); animation: blink 1.5s infinite; }
+
+.quickStats {
+  display: flex;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.quickStat {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 16px;
+  border-right: 1px solid var(--border-subtle);
+}
+.quickStat:last-child { border-right: none; }
+.qsValue { font-size: 28px; font-weight: 700; font-family: var(--font-mono); }
+.qsLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+
+.tabs {
+  display: flex;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 16px;
+  gap: 4px;
+}
+.tabBtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 16px;
+  font-size: 13px; font-weight: 600; font-family: var(--font-body);
+  color: var(--text-muted);
+  border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.tabBtn:hover { color: var(--text-primary); }
+.tabActive { color: var(--text-primary) !important; border-bottom-color: var(--hot-pink) !important; }
+.tabCount {
+  background: var(--hot-pink); color: white;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center;
+}
+.tabContent { flex: 1; padding: 24px; overflow-y: auto; }
+
+/* Teams */
+.teamsTab { display: flex; flex-direction: column; gap: 20px; }
+.fundsAdj { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.adjRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.subTitle { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0; }
+.teamsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.teamCard { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.teamCardTop { display: flex; align-items: center; gap: 10px; }
+.teamRank { font-size: 20px; font-weight: 700; font-family: var(--font-mono); color: var(--text-muted); width: 36px; flex-shrink: 0; }
+.teamCardInfo { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.teamCardName { font-size: 14px; font-weight: 700; }
+.teamCardCity { font-size: 12px; font-weight: 600; }
+.teamFunds { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--yellow); }
+.teamBuildingStats { display: flex; gap: 12px; padding-top: 8px; border-top: 1px solid var(--border-subtle); font-size: 12px; color: var(--text-secondary); font-family: var(--font-mono); font-weight: 700; flex-wrap: wrap; }
+
+/* Events */
+.eventsTab { display: flex; flex-direction: column; gap: 20px; }
+.presetsGrid { display: flex; flex-direction: column; gap: 10px; }
+.presetBtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.presetBtn { padding: 10px 16px; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; border: 1px solid; transition: all 0.15s; font-family: var(--font-body); }
+.presetDisaster { background: rgba(239,35,60,0.1); color: var(--hot-pink); border-color: rgba(239,35,60,0.3); }
+.presetDisaster:hover { background: rgba(239,35,60,0.2); transform: translateY(-1px); }
+.presetBonus { background: rgba(6,214,160,0.1); color: var(--status-safe); border-color: rgba(6,214,160,0.3); }
+.presetBonus:hover { background: rgba(6,214,160,0.2); transform: translateY(-1px); }
+.eventForm, .challengeForm { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.formGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.formRow { display: flex; flex-direction: column; gap: 6px; }
+.fLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.activeEvents { display: flex; flex-direction: column; gap: 8px; }
+.eventRow { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.eventRowTitle { font-size: 14px; font-weight: 700; }
+
+/* Market */
+.marketTab { display: flex; flex-direction: column; gap: 20px; }
+.marketControlGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.marketControlCard { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.mcTop { display: flex; align-items: center; gap: 10px; }
+.mcName { font-size: 16px; font-weight: 700; }
+.mcRow { display: flex; flex-direction: column; gap: 4px; }
+
+/* Challenges */
+.challengesTab { display: flex; flex-direction: column; gap: 20px; }
+.challengeList { display: flex; flex-direction: column; gap: 8px; }
+.chRow { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.chInfo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chTitle { font-size: 14px; font-weight: 700; }
+.chActions { display: flex; gap: 8px; }
+
+@media (max-width: 1024px) {
+  .teamsGrid { grid-template-columns: repeat(2, 1fr); }
+  .marketControlGrid { grid-template-columns: repeat(2, 1fr); }
+  .formGrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .teamsGrid { grid-template-columns: 1fr; }
+  .quickStats { flex-wrap: wrap; }
+  .quickStat { min-width: 50%; }
+}
