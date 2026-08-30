@@ -54,7 +54,7 @@ export default function LoginPage() {
       <div className={styles.authLeft}>
         <div className={styles.authBrand}>
           <span className={styles.authBrandIcon}>🏗️</span>
-          <span className={styles.authBrandName}>SKYSCRAPER ST.</span>
+          <span className={styles.authBrandName}>HIGH-RISE HUSTLE</span>
         </div>
         <div className={styles.authHero}>
           <h1 className={styles.authHeroTitle}>BUILD YOUR<br />EMPIRE.</h1>

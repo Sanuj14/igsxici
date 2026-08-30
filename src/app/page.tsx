@@ -8,7 +8,7 @@ export default function LandingPage() {
       <nav className={styles.nav}>
         <div className={styles.navLogo}>
           <span className={styles.navLogoIcon}>🏗️</span>
-          <span className={styles.navLogoText}>SKYSCRAPER ST.</span>
+          <span className={styles.navLogoText}>HIGH-RISE HUSTLE</span>
         </div>
         <div className={styles.navLinks}>
           <a href="#rules">Rules</a>
@@ -34,8 +34,8 @@ export default function LandingPage() {
             LIVE STRATEGY EVENT
           </div>
           <h1 className={`${styles.heroTitle} text-hero`}>
-            SKYSCRAPER<br />
-            <span className={styles.heroTitleAccent}>STREET.</span>
+            HIGH-RISE<br />
+            <span className={styles.heroTitleAccent}>HUSTLE.</span>
           </h1>
           <p className={styles.heroDesc}>
             Build the tallest, most valuable skyscraper in India.
@@ -190,7 +190,7 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer className={styles.footer}>
         <div className={styles.footerLeft}>
-          <span className={styles.navLogoText}>🏗️ SKYSCRAPER ST.</span>
+          <span className={styles.navLogoText}>© 2024 HIGH-RISE HUSTLE</span>
         </div>
         <div className={styles.footerCenter}>
           <span>© 2026 IGS × ICI. All rights reserved.</span>

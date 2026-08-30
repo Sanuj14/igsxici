@@ -3,11 +3,11 @@ import { Providers } from './providers'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Skyscraper Street — Live Strategy Game',
+  title: 'High-rise Hustle - Live Strategy Game',
   description: 'Build, trade, survive. The ultimate real-time skyscraper construction strategy game for college events.',
-  keywords: ['skyscraper', 'strategy game', 'college event', 'live game'],
+  keywords: ['high-rise', 'hustle', 'strategy game', 'college event', 'live game'],
   openGraph: {
-    title: 'Skyscraper Street',
+    title: 'High-rise Hustle',
     description: 'Build the best skyscraper in India. Survive the chaos.',
     type: 'website',
   },

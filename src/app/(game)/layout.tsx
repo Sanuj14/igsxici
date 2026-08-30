@@ -171,7 +171,7 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
         <div className={styles.sidebarHeader}>
           <Link href="/dashboard" className={styles.sidebarBrand}>
             <span className={styles.sidebarBrandIcon}>🏗️</span>
-            <span className={styles.sidebarBrandText}>SKYSCRAPER<br />STREET</span>
+            <span className={styles.sidebarBrandText}>HIGH-RISE<br />HUSTLE</span>
           </Link>
         </div>
 

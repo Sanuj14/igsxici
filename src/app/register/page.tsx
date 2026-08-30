@@ -72,7 +72,7 @@ export default function RegisterPage() {
       <div className={styles.authLeft} style={{ background: 'var(--electric-purple)' }}>
         <div className={styles.authBrand}>
           <span className={styles.authBrandIcon}>🏗️</span>
-          <span className={styles.authBrandName}>SKYSCRAPER ST.</span>
+          <span className={styles.authBrandName}>HIGH-RISE HUSTLE</span>
         </div>
         <div className={styles.authHero}>
           <h1 className={styles.authHeroTitle} style={{ color: 'var(--neon-lime)' }}>

@@ -233,7 +233,7 @@ export default function AdminPage() {
           <span style={{ fontSize: '24px' }}>⚙️</span>
           <div>
             <div className={styles.adminTitle}>ADMIN COMMAND CENTER</div>
-            <div className={styles.adminSubtitle}>SKYSCRAPER STREET — LIVE CONTROL</div>
+            <div className={styles.adminSubtitle}>HIGH-RISE HUSTLE - LIVE CONTROL</div>
           </div>
         </div>
         <div className={styles.adminHeaderRight}>
