@@ -1,103 +1,543 @@
+/* High-Rise Hustle — Stitch Admin Terminal CSS */
+
 .adminPage {
   min-height: 100vh;
-  background: var(--bg-void);
-  color: var(--text-primary);
+  height: 100vh;
+  background-color: #0E0E13;
+  color: #E4E1E9;
   font-family: var(--font-body);
+  display: flex;
+  padding: 16px;
+  gap: 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 16px;
+  background: var(--bg-void);
+}
+.loadingText {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--neon-lime);
+}
+
+/* SIDEBAR RAIL */
+.sidebarRail {
+  width: 72px;
+  background: #1F1F25;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px #0A0A0F;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 8px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.railBrand {
+  font-size: 30px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.railNav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.railBtn {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.railBtn:hover {
+  color: var(--cyber-blue);
+  background: rgba(0, 229, 255, 0.1);
+  border-color: rgba(0, 229, 255, 0.3);
+}
+.railBtnActive {
+  background: #FFD60A !important;
+  color: #000 !important;
+  border: 2px solid #000 !important;
+  box-shadow: 2px 2px 0px #000;
+}
+
+.railFooter {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* MAIN CONTENT CONTAINER */
+.mainContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+}
+
+/* TOP HEADER */
+.topHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0E0E13;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px #0A0A0F;
+  border-radius: 8px;
+  padding: 12px 20px;
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.terminalTitle {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.rootBadge {
+  background: var(--secondary-container);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #000;
+}
+
+.headerCenterPill {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #000;
+  padding: 8px 20px;
+  border: 2px solid var(--neon-lime);
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 #000;
+}
+.activeRoundTag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--neon-lime);
+}
+.codeDivider {
+  width: 1px;
+  height: 16px;
+  background: #333;
+}
+.accessCodeReadout {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.timerReadout {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--cyber-blue);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.operatorDetails {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: var(--font-mono);
+}
+.operatorEmail {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+.operatorPasscode {
+  font-size: 10px;
+  color: var(--cyber-blue);
+}
+.operatorAvatar {
+  width: 38px;
+  height: 38px;
+  background: #FFD60A;
+  border: 2px solid #000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 13px;
+  color: #000;
+  box-shadow: 2px 2px 0 #000;
+}
+
+/* MAIN GRID LAYOUT */
+.mainGrid {
+  display: grid;
+  grid-template-columns: 8fr 4fr;
+  gap: 14px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* CARDS COMMON */
+.neoCard {
+  background: #14141E;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px #0A0A0F;
+  border-radius: 8px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
-.loading {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 100vh; gap: 16px; background: var(--bg-void);
-}
-.loadingText { font-size: 14px; font-weight: 700; letter-spacing: 0.2em; color: var(--text-muted); }
-.adminHeader {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 24px;
-  background: var(--bg-deep);
-  border-bottom: 1px solid var(--border-subtle);
-}
-.adminBrand { display: flex; align-items: center; gap: 12px; }
-.adminTitle { font-size: 14px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-primary); }
-.adminSubtitle { font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; }
-.adminHeaderRight { display: flex; align-items: center; gap: 16px; }
-.liveIndicator { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--status-safe); }
-.liveDot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-safe); animation: blink 1.5s infinite; }
-
-.quickStats {
+.cardHeader {
+  padding: 10px 16px;
+  border-bottom: 2px solid #000;
   display: flex;
-  background: var(--bg-dark);
-  border-bottom: 1px solid var(--border-subtle);
+  justify-content: space-between;
+  align-items: center;
+  background: #1F1F25;
 }
-.quickStat {
-  flex: 1;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
+.cardTitle {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+/* 3 ACTIVE ROUND CARDS ROW */
+.roundCardsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.roundBannerCard {
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px #000;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.roundCardTag {
+  background: #000;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+}
+.roundCardTitle {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 800;
+  color: #000;
+  line-height: 1.2;
+}
+
+/* SPLIT MIDDLE SECTION */
+.splitSection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.formBody {
   padding: 16px;
-  border-right: 1px solid var(--border-subtle);
-}
-.quickStat:last-child { border-right: none; }
-.qsValue { font-size: 28px; font-weight: 700; font-family: var(--font-mono); }
-.qsLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
-
-.tabs {
   display: flex;
-  background: var(--bg-deep);
-  border-bottom: 1px solid var(--border-subtle);
-  padding: 0 16px;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.inputLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.neoInput {
+  background: #000 !important;
+  border: 2px solid #000 !important;
+  color: #fff !important;
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  outline: none;
+}
+.neoInput:focus {
+  border-color: var(--cyber-blue) !important;
+  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.3) !important;
+}
+
+/* COMMODITY MARKET BOARD CONDENSED */
+.marketBoardCard {
+  background: #14141E;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px #0A0A0F;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.marketTilesGrid {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.marketTile {
+  background: #1F1F25;
+  border: 2px solid #35343A;
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.marketTileTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.resourceTitle {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+.trendBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.tilePriceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.tilePrice {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 800;
+  color: #FFD60A;
+}
+.tileStock {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.tileBtnRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
 }
-.tabBtn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 12px 16px;
-  font-size: 13px; font-weight: 600; font-family: var(--font-body);
+.tileMiniBtn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 4px 0;
+  border: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: center;
+  background: #35343A;
+  color: #fff;
+  transition: all 0.1s;
+}
+.tileMiniBtn:hover {
+  transform: translateY(-1px);
+}
+.btnCrash {
+  background: #FF2D78 !important;
+  color: #000 !important;
+}
+.btnSurge {
+  background: #CCFF00 !important;
+  color: #000 !important;
+}
+
+/* RIGHT COLUMN PANELS */
+.leaderboardPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.teamListScroll {
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.teamRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #14141E;
+  transition: background 0.15s;
+}
+.teamRow:hover {
+  background: #252530;
+}
+.teamRankCircle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #333;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.teamRankFirst {
+  background: #CCFF00 !important;
+  color: #000 !important;
+}
+.teamRowInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.teamRowName {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.teamRowScore {
+  font-family: var(--font-mono);
+  font-size: 10px;
   color: var(--text-muted);
-  border: none; background: none; cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
 }
-.tabBtn:hover { color: var(--text-primary); }
-.tabActive { color: var(--text-primary) !important; border-bottom-color: var(--hot-pink) !important; }
-.tabCount {
-  background: var(--hot-pink); color: white;
-  font-size: 10px; font-weight: 700;
-  padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center;
+.teamRowFunds {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  color: #FFD60A;
 }
-.tabContent { flex: 1; padding: 24px; overflow-y: auto; }
 
-/* Teams */
-.teamsTab { display: flex; flex-direction: column; gap: 20px; }
-.fundsAdj { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.adjRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.subTitle { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0; }
-.teamsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.teamCard { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.teamCardTop { display: flex; align-items: center; gap: 10px; }
-.teamRank { font-size: 20px; font-weight: 700; font-family: var(--font-mono); color: var(--text-muted); width: 36px; flex-shrink: 0; }
-.teamCardInfo { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.teamCardName { font-size: 14px; font-weight: 700; }
-.teamCardCity { font-size: 12px; font-weight: 600; }
-.teamFunds { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--yellow); }
-.teamBuildingStats { display: flex; gap: 12px; padding-top: 8px; border-top: 1px solid var(--border-subtle); font-size: 12px; color: var(--text-secondary); font-family: var(--font-mono); font-weight: 700; flex-wrap: wrap; }
+/* AUDIT LOG PANEL */
+.auditLogPanel {
+  height: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #000 !important;
+}
+.logBody {
+  padding: 10px 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  flex: 1;
+}
 
-/* Events */
-.eventsTab { display: flex; flex-direction: column; gap: 20px; }
-.presetsGrid { display: flex; flex-direction: column; gap: 10px; }
-.presetBtns { display: flex; gap: 8px; flex-wrap: wrap; }
-.presetBtn { padding: 10px 16px; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; border: 1px solid; transition: all 0.15s; font-family: var(--font-body); }
-.presetDisaster { background: rgba(239,35,60,0.1); color: var(--hot-pink); border-color: rgba(239,35,60,0.3); }
-.presetDisaster:hover { background: rgba(239,35,60,0.2); transform: translateY(-1px); }
-.presetBonus { background: rgba(6,214,160,0.1); color: var(--status-safe); border-color: rgba(6,214,160,0.3); }
-.presetBonus:hover { background: rgba(6,214,160,0.2); transform: translateY(-1px); }
-.eventForm, .challengeForm { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-.formGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.formRow { display: flex; flex-direction: column; gap: 6px; }
-.fLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
-.activeEvents { display: flex; flex-direction: column; gap: 8px; }
-.eventRow { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.eventRowTitle { font-size: 14px; font-weight: 700; }
+/* FULL VIEW TABS CONTENT */
+.fullViewWrapper {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
 
-/* Market */
-.marketTab { display: flex; flex-direction: column; gap: 20px; }
+@media (max-width: 1200px) {
+  .mainGrid { grid-template-columns: 1fr; overflow-y: auto; }
+  .rightCol { height: auto; }
+  .auditLogPanel { height: 180px; }
+}
+
 .marketControlGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .marketControlCard { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 .mcTop { display: flex; align-items: center; gap: 10px; }

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import type { Team, Building, Challenge, Event, City } from '@/lib/supabase/types'
 import { resetGame, removeTeam, triggerTargetedEvent, createGame, deleteGame, deleteChallenge as deleteChallengeAction, expireEvent as expireEventAction, createChallenge as createChallengeAction } from '@/app/actions/admin'
@@ -12,12 +13,12 @@ interface TeamFull extends Team {
 }
 
 const DISASTER_PRESETS = [
-  { title: 'Flood Warning', desc: 'Heavy rainfall floods lower floors. Construction costs +30%. Cement demand spikes.', type: 'disaster', effects: { cement_price_mult: 1.3, construction_delay: true } },
-  { title: 'Earthquake Alert', desc: 'Seismic activity damages structural stability by 10 points for all affected buildings.', type: 'disaster', effects: { stability_damage: 10 } },
-  { title: 'Steel Shortage', desc: 'Supply chain disruption. Steel prices surge 50%. Stock halved.', type: 'disaster', effects: { steel_price_mult: 1.5, steel_stock_cut: 0.5 } },
-  { title: 'Market Boom', desc: 'Construction frenzy! All resource prices drop 20% for 5 minutes.', type: 'bonus', effects: { all_price_mult: 0.8 } },
-  { title: 'Government Grant', desc: 'Selected teams receive infrastructure funding bonus.', type: 'bonus', effects: { fund_bonus: 10000 } },
-  { title: 'Monsoon Season', desc: 'Heavy rains halt all construction for 3 minutes. Resources still tradeable.', type: 'disaster', effects: { construction_pause: true } },
+  { title: 'Monsoon Flash Flood', desc: 'Heavy rainfall floods lower floors. Cement demand surges +30%. Construction temporarily delayed.', type: 'disaster', effects: { cement_price_mult: 1.3, construction_delay: true } },
+  { title: 'Earthquake Tremor', desc: 'Seismic activity damages structural stability by 10 points across target metropolises.', type: 'disaster', effects: { stability_damage: 10 } },
+  { title: 'Supply Chain Embargo', desc: 'Steel and Aluminium prices surge 50%. Material stock halved.', type: 'disaster', effects: { steel_price_mult: 1.5, aluminium_price_mult: 1.5 } },
+  { title: 'Material Subsidies', desc: 'Urban ministry stimulus! All resource prices drop 20% for 5 minutes.', type: 'bonus', effects: { all_price_mult: 0.8 } },
+  { title: 'Municipal Grant', desc: 'Active construction syndicates receive ₹10,000 cash grant.', type: 'bonus', effects: { fund_bonus: 10000 } },
+  { title: 'Severe Cyclone', desc: 'Coastal metropolises halted. All active building projects paused.', type: 'disaster', effects: { construction_pause: true } },
 ]
 
 export default function AdminPage() {
@@ -27,10 +28,16 @@ export default function AdminPage() {
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [games, setGames] = useState<any[]>([])
-  const [tab, setTab] = useState<'teams'|'events'|'market'|'challenges'|'games'|'config'|'logs'>('teams')
+  const [marketPrices, setMarketPrices] = useState<any[]>([])
+  const [tab, setTab] = useState<'dashboard'|'teams'|'events'|'market'|'challenges'|'games'|'config'>('dashboard')
   const [loading, setLoading] = useState(true)
+  const [logs, setLogs] = useState<Array<{ id: string; time: string; text: string; type: 'info'|'event'|'market'|'system' }>>([
+    { id: '1', time: '14:22:01', text: 'Market Update: CEMENT price surged +10% to ₹1,300.', type: 'market' },
+    { id: '2', time: '14:21:45', text: 'DISASTER TRIGGERED: Earthquake in Mumbai region.', type: 'event' },
+    { id: '3', time: '14:20:00', text: 'HIGH-RISE HUSTLE TERMINAL INITIALIZED. Root online.', type: 'system' }
+  ])
 
-  // Event form state
+  // Event form
   const [eTitle, setETitle] = useState('')
   const [eDesc, setEDesc] = useState('')
   const [eType, setEType] = useState('disaster')
@@ -44,9 +51,9 @@ export default function AdminPage() {
     cement: 1.0, steel: 1.0, glass: 1.0, timber: 1.0, aluminium: 1.0, copper: 1.0, labour: 1.0
   })
 
-  // Game form
-  const [gTitle, setGTitle] = useState('')
-  const [gDuration, setGDuration] = useState(30)
+  // Game session form
+  const [gTitle, setGTitle] = useState('Round 1: Foundation Sprint')
+  const [gDuration, setGDuration] = useState(45)
 
   // Challenge form
   const [cTitle, setCTitle] = useState('')
@@ -57,16 +64,12 @@ export default function AdminPage() {
   const [cSlots, setCSlots] = useState(3)
   const [cDuration, setCDuration] = useState(5)
 
-  // Market control
-  const [marketPrices, setMarketPrices] = useState<any[]>([])
-
   // Funds adjustment
   const [adjTeamId, setAdjTeamId] = useState('')
   const [adjAmount, setAdjAmount] = useState(0)
 
   useEffect(() => {
     async function init() {
-      // 1. Check for hardcoded admin cookie
       if (document.cookie.includes('admin_auth=632014')) {
         await loadAll()
         setLoading(false)
@@ -74,7 +77,6 @@ export default function AdminPage() {
         return
       }
 
-      // 2. Fallback to Supabase auth check
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/admin/login'); return }
       const { data: profile } = await supabase.from('user_profiles').select('role').eq('id', user.id).single()
@@ -87,12 +89,18 @@ export default function AdminPage() {
   }, [])
 
   function setupRealtime() {
-    const ch = supabase.channel('admin-updates')
+    const ch = supabase.channel('admin-terminal')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, loadAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'buildings' }, loadAll)
-      
-    ch.subscribe()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'market_prices' }, loadAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, loadAll)
+      .subscribe()
     return () => { supabase.removeChannel(ch) }
+  }
+
+  function addLog(text: string, type: 'info'|'event'|'market'|'system' = 'info') {
+    const time = new Date().toLocaleTimeString('en-GB')
+    setLogs(prev => [{ id: Math.random().toString(), time, text, type }, ...prev.slice(0, 19)])
   }
 
   async function loadAll() {
@@ -120,12 +128,22 @@ export default function AdminPage() {
     setGames(gamesRes.data || [])
   }
 
+  async function handleLaunchRound() {
+    if (!gTitle) return
+    const res = await createGame(gTitle, gDuration)
+    if (!res.success) {
+      alert(`Failed to launch round: ${res.error}`)
+    } else {
+      addLog(`ROUND LAUNCHED: "${gTitle}" (Duration: ${gDuration}m). Stock reset to 1000.`, 'system')
+      loadAll()
+    }
+  }
+
   async function triggerEvent() {
     const effectsData: any = {
       fund_change: eFundChange,
       stability_change: eStabilityChange,
     }
-    
     const finalPriceEffects: Record<string, number> = {}
     for (const [slug, val] of Object.entries(ePriceEffects)) {
       if (val !== 1.0) finalPriceEffects[slug] = val
@@ -141,6 +159,7 @@ export default function AdminPage() {
 
     if (!res.success) alert(res.error)
     else { 
+      addLog(`DISASTER TRIGGERED: ${eTitle} (${eScope})`, 'event')
       setETitle(''); setEDesc(''); 
       setEFundChange(0); setEStabilityChange(0);
       setEPriceEffects({cement: 1.0, steel: 1.0, glass: 1.0, timber: 1.0, aluminium: 1.0, copper: 1.0, labour: 1.0})
@@ -155,11 +174,20 @@ export default function AdminPage() {
       effects: preset.effects, status: 'active',
       end_at: new Date(Date.now() + 5 * 60000).toISOString()
     })
+    addLog(`PRESET ACTIVATED: ${preset.title}`, 'event')
     loadAll()
   }
 
   async function expireEvent(id: string) {
     await expireEventAction(id)
+    addLog(`Event expired manually: ID ${id.slice(0, 8)}`, 'info')
+    loadAll()
+  }
+
+  async function quickBumpPrice(resourceId: string, currentPrice: number, multiplier: number) {
+    const newPrice = Math.max(10, Math.round(currentPrice * multiplier))
+    await supabase.from('market_prices').update({ current_price: newPrice, updated_at: new Date().toISOString() }).eq('resource_id', resourceId)
+    addLog(`Market Adjusted: Resource ${resourceId.slice(0, 6)} set to ₹${newPrice}`, 'market')
     loadAll()
   }
 
@@ -171,17 +199,10 @@ export default function AdminPage() {
       max_slots: cSlots, duration_minutes: cDuration,
     })
     if (!res.success) alert(res.error)
-    else { setCTitle(''); setCDesc(''); loadAll() }
-  }
-
-  async function activateChallenge(id: string) {
-    await supabase.from('challenges').update({ status: 'active', expires_at: new Date(Date.now() + cDuration * 60000).toISOString() }).eq('id', id)
-    loadAll()
-  }
-
-  async function closeChallenge(id: string) {
-    await supabase.from('challenges').update({ status: 'closed' }).eq('id', id)
-    loadAll()
+    else { 
+      addLog(`CHALLENGE DEPLOYED: "${cTitle}" (₹${cReward})`, 'system')
+      setCTitle(''); setCDesc(''); loadAll() 
+    }
   }
 
   async function adjustFunds() {
@@ -190,114 +211,343 @@ export default function AdminPage() {
     if (!team) return
     await supabase.from('teams').update({ funds: team.funds + adjAmount }).eq('id', adjTeamId)
     await supabase.from('transactions').insert({ team_id: adjTeamId, type: 'admin_adjustment', amount: adjAmount, metadata: { reason: 'Admin manual adjustment' } })
-    loadAll()
-  }
-
-  async function updateMarketPrice(resourceId: string, price: number) {
-    await supabase.from('market_prices').update({ current_price: price, updated_at: new Date().toISOString() }).eq('resource_id', resourceId)
-    loadAll()
-  }
-
-  async function updateMarketStock(resourceId: string, stock: number) {
-    await supabase.from('market_prices').update({ stock }).eq('resource_id', resourceId)
-    loadAll()
-  }
-
-  async function approveChallenge(participantId: string, teamId: string, challengeId: string, success: boolean) {
-    const ch = challenges.find(c => c.id === challengeId)
-    await supabase.from('challenge_participants').update({
-      status: success ? 'success' : 'failed',
-      completed_at: new Date().toISOString()
-    }).eq('id', participantId)
-    if (success && ch) {
-      const team = teams.find(t => t.id === teamId)
-      if (team) await supabase.from('teams').update({ funds: team.funds + ch.reward_funds }).eq('id', teamId)
-    }
+    addLog(`Funds Adjusted: ${team.name} ${adjAmount > 0 ? '+' : ''}₹${adjAmount}`, 'system')
+    setAdjAmount(0)
     loadAll()
   }
 
   if (loading) return (
     <div className={styles.loading}>
       <span style={{ fontSize: '48px' }}>⚙️</span>
-      <span className={styles.loadingText}>LOADING COMMAND CENTER...</span>
+      <span className={styles.loadingText}>INITIALIZING ADMIN TERMINAL...</span>
     </div>
   )
 
-  const TABS = [
-    { id: 'teams', label: '👥 Teams', count: teams.length },
-    { id: 'events', label: '⚡ Events', count: events.filter(e=>e.status==='active').length },
-    { id: 'market', label: '💰 Market', count: null },
-    { id: 'challenges', label: '🏆 Challenges', count: challenges.filter(c=>c.status==='active').length },
-    { id: 'games', label: '🎮 Games', count: games.length },
-    { id: 'config', label: '⚙️ Config', count: null },
-    { id: 'logs', label: '📜 Logs', count: null },
-  ]
+  const activeGame = games.find(g => g.status === 'active') || games[0]
+  const activeEventsCount = events.filter(e => e.status === 'active').length
 
   return (
     <div className={styles.adminPage}>
-      {/* ADMIN HEADER */}
-      <header className={styles.adminHeader}>
-        <div className={styles.adminBrand}>
-          <span style={{ fontSize: '24px' }}>⚙️</span>
-          <div>
-            <div className={styles.adminTitle}>ADMIN COMMAND CENTER</div>
-            <div className={styles.adminSubtitle}>HIGH-RISE HUSTLE - LIVE CONTROL</div>
-          </div>
+      {/* SIDEBAR NAVIGATION RAIL */}
+      <aside className={styles.sidebarRail}>
+        <div className={styles.railBrand} onClick={() => setTab('dashboard')} title="Master Dashboard">
+          🏢
         </div>
-        <div className={styles.adminHeaderRight}>
-          <div className={styles.liveIndicator}>
-            <span className={styles.liveDot} />
-            LIVE
-          </div>
-          <button onClick={() => { supabase.auth.signOut(); router.push('/') }} className="game-btn game-btn-ghost game-btn-sm">Sign Out</button>
-        </div>
-      </header>
-
-      {/* QUICK STATS */}
-      <div className={styles.quickStats}>
-        {[
-          { label: 'TEAMS', value: teams.length, color: 'var(--electric-blue)' },
-          { label: 'LIVE EVENTS', value: events.filter(e=>e.status==='active').length, color: 'var(--hot-pink)' },
-          { label: 'ACTIVE CHALLENGES', value: challenges.filter(c=>c.status==='active').length, color: 'var(--yellow)' },
-          { label: 'TALLEST TOWER', value: `${Math.max(...teams.map(t => t.building?.height || 0), 0).toFixed(0)}m`, color: 'var(--neon-lime)' },
-        ].map(s => (
-          <div key={s.label} className={styles.quickStat}>
-            <span className={styles.qsValue} style={{ color: s.color }}>{s.value}</span>
-            <span className={styles.qsLabel}>{s.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* TABS */}
-      <div className={styles.tabs}>
-        {TABS.map(t => (
-          <button key={t.id} id={`admin-tab-${t.id}`} className={`${styles.tabBtn} ${tab === t.id ? styles.tabActive : ''}`} onClick={() => setTab(t.id as any)}>
-            {t.label}
-            {t.count !== null && t.count > 0 && <span className={styles.tabCount}>{t.count}</span>}
+        <nav className={styles.railNav}>
+          <button className={`${styles.railBtn} ${tab === 'dashboard' ? styles.railBtnActive : ''}`} onClick={() => setTab('dashboard')} title="Master Terminal">
+            📊
           </button>
-        ))}
-      </div>
+          <button className={`${styles.railBtn} ${tab === 'games' ? styles.railBtnActive : ''}`} onClick={() => setTab('games')} title="Rounds & Sessions">
+            🚀
+          </button>
+          <button className={`${styles.railBtn} ${tab === 'events' ? styles.railBtnActive : ''}`} onClick={() => setTab('events')} title="Disaster Engine">
+            🚨
+          </button>
+          <button className={`${styles.railBtn} ${tab === 'market' ? styles.railBtnActive : ''}`} onClick={() => setTab('market')} title="Commodity Market">
+            📈
+          </button>
+          <button className={`${styles.railBtn} ${tab === 'challenges' ? styles.railBtnActive : ''}`} onClick={() => setTab('challenges')} title="Speed Challenges">
+            ⚡
+          </button>
+          <button className={`${styles.railBtn} ${tab === 'teams' ? styles.railBtnActive : ''}`} onClick={() => setTab('teams')} title="Teams Ledger">
+            👥
+          </button>
+        </nav>
+        <div className={styles.railFooter}>
+          <button className={`${styles.railBtn} ${tab === 'config' ? styles.railBtnActive : ''}`} onClick={() => setTab('config')} title="Danger Zone / Wipe">
+            ⚙️
+          </button>
+          <button 
+            className={styles.railBtn} 
+            style={{ color: 'var(--hot-pink)' }}
+            onClick={() => { document.cookie = "admin_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; supabase.auth.signOut(); router.push('/') }} 
+            title="Exit Terminal"
+          >
+            🚪
+          </button>
+        </div>
+      </aside>
 
-      <div className={styles.tabContent}>
-        {/* TEAMS TAB */}
+      {/* MAIN CONTENT WRAPPER */}
+      <div className={styles.mainContainer}>
+        {/* TOP APP BAR */}
+        <header className={styles.topHeader}>
+          <div className={styles.headerLeft}>
+            <h1 className={styles.terminalTitle}>Admin Terminal</h1>
+            <span className={styles.rootBadge}>ROOT ACCESS</span>
+          </div>
+
+          <div className={styles.headerCenterPill}>
+            <div className={styles.activeRoundTag}>
+              <span>●</span>
+              <span>{activeGame?.title ? activeGame.title.toUpperCase() : 'ROUND 1 — READY'}</span>
+            </div>
+            <div className={styles.codeDivider} />
+            <span className={styles.accessCodeReadout}>
+              CODE: <strong style={{ color: 'var(--neon-lime)' }}>[{activeGame?.access_code || 'A9X4K2'}]</strong>
+            </span>
+            <div className={styles.codeDivider} />
+            <div className={styles.timerReadout}>
+              <span>⏳</span>
+              <span>{activeGame?.duration_minutes ? `${activeGame.duration_minutes}:00` : '45:00'}</span>
+            </div>
+          </div>
+
+          <div className={styles.headerRight}>
+            <div className={styles.operatorDetails}>
+              <span className={styles.operatorEmail}>OPERATOR: igs@vit.ac.in</span>
+              <span className={styles.operatorPasscode}>PASSCODE: [632014]</span>
+            </div>
+            <div className={styles.operatorAvatar}>
+              IGS
+            </div>
+          </div>
+        </header>
+
+        {/* TAB 1: MASTER DASHBOARD VIEW */}
+        {tab === 'dashboard' && (
+          <main className={styles.mainGrid}>
+            {/* LEFT COLUMN: ACTIVE ROUNDS, SESSION ENGINE, DISASTERS, MARKET TILES */}
+            <div className={styles.leftCol}>
+              {/* 3 ACTIVE ROUND CARDS ROW */}
+              <div className={styles.roundCardsRow}>
+                {/* Card 1: Setup */}
+                <div className={styles.roundBannerCard} style={{ background: '#FFD60A' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className={styles.roundCardTag}>ROUND 1 ACTIVE</span>
+                    <span style={{ fontSize: '14px', fontWeight: 800 }}>⭐</span>
+                  </div>
+                  <h3 className={styles.roundCardTitle}>City Foundation & Resource Allocation</h3>
+                  <div style={{ marginTop: 'auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#000', fontWeight: 800 }}>
+                      <span>Time Remaining</span>
+                      <span>{activeGame?.duration_minutes || 45}m</span>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '99px', overflow: 'hidden', marginTop: '4px' }}>
+                      <div style={{ width: '65%', height: '100%', background: '#000' }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2: Trading Phase */}
+                <div className={styles.roundBannerCard} style={{ background: '#CCFF00' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className={styles.roundCardTag}>MARKET ACTIVE</span>
+                    <span style={{ fontSize: '14px', fontWeight: 800 }}>📈</span>
+                  </div>
+                  <h3 className={styles.roundCardTitle}>Commodity Trading & Building Sprint</h3>
+                  <div style={{ marginTop: 'auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#000', fontWeight: 800 }}>
+                      <span>Market Stock</span>
+                      <span>1000 Units Each</span>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '99px', overflow: 'hidden', marginTop: '4px' }}>
+                      <div style={{ width: '90%', height: '100%', background: '#000' }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 3: Crisis Phase */}
+                <div className={styles.roundBannerCard} style={{ background: '#00E5FF' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className={styles.roundCardTag}>CRISIS ENGINE</span>
+                    <span style={{ fontSize: '14px', fontWeight: 800 }}>⚡</span>
+                  </div>
+                  <h3 className={styles.roundCardTitle}>Targeted Disasters & Speed Quizzes</h3>
+                  <div style={{ marginTop: 'auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#000', fontWeight: 800 }}>
+                      <span>Active Events</span>
+                      <span>{activeEventsCount} Live</span>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '99px', overflow: 'hidden', marginTop: '4px' }}>
+                      <div style={{ width: `${Math.min(100, activeEventsCount * 30)}%`, height: '100%', background: '#000' }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SPLIT ROW: SESSION CONTROL & DISASTER GENERATOR */}
+              <div className={styles.splitSection}>
+                {/* Session Control */}
+                <section className={styles.neoCard}>
+                  <header className={styles.cardHeader}>
+                    <h2 className={styles.cardTitle}>Session Control</h2>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyber-blue)' }}>ROUND ORCHESTRATOR</span>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className={styles.inputGroup}>
+                      <label className={styles.inputLabel}>Round Title</label>
+                      <input className={styles.neoInput} value={gTitle} onChange={e => setGTitle(e.target.value)} placeholder="e.g. Round 1: Foundation" />
+                    </div>
+                    <div className={styles.inputGroup}>
+                      <label className={styles.inputLabel} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Duration (Minutes)</span>
+                        <span style={{ color: 'var(--neon-lime)' }}>{gDuration} mins</span>
+                      </label>
+                      <input 
+                        type="range" min={10} max={120} value={gDuration} 
+                        onChange={e => setGDuration(+e.target.value)} 
+                        style={{ accentColor: 'var(--cyber-blue)', cursor: 'pointer' }} 
+                      />
+                    </div>
+                    <button className="brutal-btn brutal-btn-lime" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto', padding: '12px' }} onClick={handleLaunchRound}>
+                      🚀 LAUNCH ROUND & RESET STOCK
+                    </button>
+                  </div>
+                </section>
+
+                {/* Disaster Generator */}
+                <section className={styles.neoCard}>
+                  <header className={styles.cardHeader}>
+                    <h2 className={styles.cardTitle}>Disaster Generator</h2>
+                    <span style={{ color: 'var(--hot-pink)', fontSize: '14px' }}>⚠️</span>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className={styles.inputGroup}>
+                      <label className={styles.inputLabel}>Target Metropolis</label>
+                      <select className={styles.neoInput} value={eCityId} onChange={e => { setECityId(e.target.value); setEScope(e.target.value ? 'city' : 'global') }}>
+                        <option value="">Global (All 15 Cities)</option>
+                        {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div className={styles.inputGroup}>
+                      <label className={styles.inputLabel}>Quick Shock Presets</label>
+                      <div style={{ display: 'grid', gridTo: '1fr', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                        {DISASTER_PRESETS.slice(0, 4).map(p => (
+                          <button key={p.title} className="brutal-btn brutal-btn-white" style={{ fontSize: '10px', padding: '6px' }} onClick={() => triggerPreset(p)}>
+                            {p.title.split(' ')[0]} 🚨
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Active Disasters Mini List */}
+                    <div style={{ marginTop: 'auto', borderTop: '1px solid #333', paddingTop: '8px' }}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--hot-pink)', fontWeight: 800, marginBottom: '4px' }}>
+                        ACTIVE DISASTERS ({events.filter(e => e.status === 'active').length})
+                      </div>
+                      {events.filter(e => e.status === 'active').slice(0, 2).map(ev => (
+                        <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000', padding: '4px 8px', border: '1px solid var(--hot-pink)', borderRadius: '4px', marginBottom: '4px' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--hot-pink)' }}>{ev.title}</span>
+                          <button onClick={() => expireEvent(ev.id)} style={{ color: '#fff', fontSize: '10px', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              {/* COMMODITY MARKET BOARD */}
+              <section className={styles.marketBoardCard}>
+                <header className={styles.cardHeader}>
+                  <h2 className={styles.cardTitle}>Commodity Market Board</h2>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--neon-lime)' }}>LIVE BUMP / SHOCK</span>
+                </header>
+                <div className={styles.marketTilesGrid}>
+                  {marketPrices.slice(0, 6).map((mp: any) => {
+                    const res = mp.resource
+                    return (
+                      <div key={mp.id} className={styles.marketTile}>
+                        <div className={styles.marketTileTop}>
+                          <span className={styles.resourceTitle}>{res?.name}</span>
+                          <span className={styles.trendBadge} style={{ background: 'var(--neon-lime)', color: '#000' }}>STOCK: {mp.stock}</span>
+                        </div>
+                        <div className={styles.tilePriceRow}>
+                          <span className={styles.tilePrice}>₹{mp.current_price.toLocaleString('en-IN')}</span>
+                          <span className={styles.tileStock}>per {res?.unit_label}</span>
+                        </div>
+                        <div className={styles.tileBtnRow}>
+                          <button className={styles.tileMiniBtn} onClick={() => quickBumpPrice(mp.resource_id, mp.current_price, 1.1)}>↑ 10%</button>
+                          <button className={styles.tileMiniBtn} onClick={() => quickBumpPrice(mp.resource_id, mp.current_price, 0.9)}>↓ 10%</button>
+                          <button className={`${styles.tileMiniBtn} ${styles.btnCrash}`} onClick={() => quickBumpPrice(mp.resource_id, mp.current_price, 0.5)}>CRASH</button>
+                          <button className={`${styles.tileMiniBtn} ${styles.btnSurge}`} onClick={() => quickBumpPrice(mp.resource_id, mp.current_price, 1.5)}>SURGE</button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            </div>
+
+            {/* RIGHT COLUMN: TEAM LEADERBOARD LEDGER & TERMINAL AUDIT LOG */}
+            <div className={styles.rightCol}>
+              {/* Leaderboard Panel */}
+              <section className={`${styles.neoCard} ${styles.leaderboardPanel}`}>
+                <header className={styles.cardHeader}>
+                  <h2 className={styles.cardTitle}>Team Leaderboard</h2>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', background: '#FFD60A', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                    {teams.length} TEAMS
+                  </span>
+                </header>
+                <div className={styles.teamListScroll}>
+                  {teams.map((team, idx) => (
+                    <div key={team.id} className={styles.teamRow}>
+                      <div className={`${styles.teamRankCircle} ${idx === 0 ? styles.teamRankFirst : ''}`}>
+                        {idx + 1}
+                      </div>
+                      <div className={styles.teamRowInfo}>
+                        <div className={styles.teamRowName}>{team.name}</div>
+                        <div className={styles.teamRowScore}>
+                          H: {team.building?.height.toFixed(0) || 0}m • F: {team.building?.floors || 0}
+                        </div>
+                      </div>
+                      <div className={styles.teamRowFunds}>
+                        ₹{(team.funds / 1000).toFixed(0)}K
+                      </div>
+                    </div>
+                  ))}
+                  {teams.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>No teams registered yet.</p>}
+                </div>
+                <div style={{ padding: '10px 14px', borderTop: '1px solid #333', background: '#1F1F25' }}>
+                  <button className="brutal-btn brutal-btn-white" style={{ width: '100%', justifyContent: 'center', fontSize: '11px', padding: '8px' }} onClick={() => setTab('teams')}>
+                    VIEW FULL TEAMS LEDGER →
+                  </button>
+                </div>
+              </section>
+
+              {/* Terminal Audit Log */}
+              <section className={`${styles.neoCard} ${styles.auditLogPanel}`}>
+                <header className={styles.cardHeader} style={{ background: '#1F1F25' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>TERMINAL AUDIT LOG</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--neon-lime)' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--neon-lime)' }} />
+                    LIVE
+                  </span>
+                </header>
+                <div className={styles.logBody}>
+                  {logs.map(log => (
+                    <div key={log.id}>
+                      <span style={{ color: log.type === 'market' ? 'var(--cyber-blue)' : log.type === 'event' ? 'var(--hot-pink)' : 'var(--neon-lime)', marginRight: '6px' }}>
+                        [{log.time}]
+                      </span>
+                      <span style={{ color: '#fff' }}>{log.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </main>
+        )}
+
+        {/* TAB 2: TEAMS MANAGEMENT VIEW */}
         {tab === 'teams' && (
-          <div className={styles.teamsTab}>
+          <div className={styles.fullViewWrapper}>
             <div className={styles.fundsAdj}>
-              <h3 className={styles.subTitle}>ADJUST TEAM FUNDS</h3>
+              <h3 className={styles.cardTitle}>ADJUST TEAM FUNDS / GRANT BONUSES</h3>
               <div className={styles.adjRow}>
-                <select id="adj-team" value={adjTeamId} onChange={e=>setAdjTeamId(e.target.value)} className="game-input" style={{flex:1}}>
+                <select value={adjTeamId} onChange={e => setAdjTeamId(e.target.value)} className="brutal-input" style={{ flex: 1 }}>
                   <option value="">Select team...</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.name} (₹{t.funds.toLocaleString('en-IN')})</option>)}
                 </select>
-                <input id="adj-amount" type="number" value={adjAmount} onChange={e=>setAdjAmount(+e.target.value)} className="game-input" placeholder="e.g. 10000 or -5000" style={{width:'160px'}} />
-                <button id="apply-adj" className="game-btn game-btn-primary" onClick={adjustFunds}>Apply</button>
+                <input type="number" value={adjAmount} onChange={e => setAdjAmount(+e.target.value)} className="brutal-input" placeholder="e.g. 10000 or -5000" style={{ width: '180px' }} />
+                <button className="brutal-btn brutal-btn-lime" onClick={adjustFunds}>Apply Adjustment</button>
               </div>
             </div>
+
             <div className={styles.teamsGrid}>
               {teams.map((team, i) => (
-                <div key={team.id} className={`${styles.teamCard} game-card`}>
+                <div key={team.id} className={styles.neoCard} style={{ padding: '16px', gap: '10px' }}>
                   <div className={styles.teamCardTop}>
-                    <div className={styles.teamRank}>#{i+1}</div>
+                    <div className={styles.teamRank}>#{i + 1}</div>
                     <div className={styles.teamCardInfo}>
                       <span className={styles.teamCardName}>{team.name}</span>
                       <span className={styles.teamCardCity} style={{ color: (team.city as any)?.color }}>{(team.city as any)?.name || 'No city'}</span>
@@ -306,17 +556,16 @@ export default function AdminPage() {
                   </div>
                   {team.building && (
                     <div className={styles.teamBuildingStats}>
-                      <span>H: {team.building.height.toFixed(0)}m</span>
-                      <span>F: {team.building.floors}</span>
-                      <span>V: ₹{(team.building.building_value/1000).toFixed(0)}K</span>
-                      <span style={{color: team.building.structural_stability > 60 ? 'var(--status-safe)' : 'var(--status-critical)'}}>
-                        S: {team.building.structural_stability.toFixed(0)}%
+                      <span>HEIGHT: {team.building.height.toFixed(0)}m</span>
+                      <span>FLOORS: {team.building.floors}</span>
+                      <span style={{ color: team.building.structural_stability > 60 ? 'var(--status-safe)' : 'var(--status-critical)' }}>
+                        STABILITY: {team.building.structural_stability.toFixed(0)}%
                       </span>
                     </div>
                   )}
                   <button 
-                    className="game-btn game-btn-danger game-btn-sm" 
-                    style={{marginTop: '12px', width: '100%', justifyContent: 'center'}}
+                    className="brutal-btn brutal-btn-white" 
+                    style={{ color: 'var(--hot-pink)', marginTop: '8px', fontSize: '11px', padding: '8px' }}
                     onClick={async () => {
                       if (confirm(`Remove team ${team.name}?`)) {
                         await removeTeam(team.id)
@@ -324,7 +573,7 @@ export default function AdminPage() {
                       }
                     }}
                   >
-                    REMOVE TEAM
+                    DISQUALIFY / REMOVE TEAM
                   </button>
                 </div>
               ))}
@@ -332,156 +581,108 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* EVENTS TAB */}
+        {/* TAB 3: DISASTER & EVENTS FULL VIEW */}
         {tab === 'events' && (
-          <div className={styles.eventsTab}>
-            <div className={styles.presetsGrid}>
-              <h3 className={styles.subTitle}>QUICK PRESETS</h3>
-              <div className={styles.presetBtns}>
-                {DISASTER_PRESETS.map(preset => (
-                  <button
-                    key={preset.title}
-                    id={`preset-${preset.title.toLowerCase().replace(/\s+/g,'-')}`}
-                    className={`${styles.presetBtn} ${preset.type === 'disaster' ? styles.presetDisaster : styles.presetBonus}`}
-                    onClick={() => triggerPreset(preset)}
-                  >
-                    <span>{preset.type === 'disaster' ? '🚨' : '✅'}</span>
-                    <span>{preset.title}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <div className={styles.fullViewWrapper}>
             <div className={styles.eventForm}>
-              <h3 className={styles.subTitle}>CREATE CUSTOM EVENT</h3>
+              <h3 className={styles.cardTitle}>CUSTOM TARGETED DISASTER GENERATOR</h3>
               <div className={styles.formGrid}>
                 <div className={styles.formRow}>
-                  <label className={styles.fLabel}>TITLE</label>
-                  <input id="event-title" value={eTitle} onChange={e=>setETitle(e.target.value)} className="game-input" placeholder="Event title" />
+                  <label className={styles.fLabel}>EVENT TITLE</label>
+                  <input value={eTitle} onChange={e => setETitle(e.target.value)} className="brutal-input" placeholder="e.g. Seismic Shockwave" />
                 </div>
                 <div className={styles.formRow}>
                   <label className={styles.fLabel}>DESCRIPTION</label>
-                  <input id="event-desc" value={eDesc} onChange={e=>setEDesc(e.target.value)} className="game-input" placeholder="Describe the event" />
-                </div>
-                <div className={styles.formRow}>
-                  <label className={styles.fLabel}>TYPE</label>
-                  <select id="event-type" value={eType} onChange={e=>setEType(e.target.value)} className="game-input">
-                    <option value="disaster">Disaster</option>
-                    <option value="bonus">Bonus</option>
-                    <option value="market">Market</option>
-                    <option value="construction">Construction</option>
-                    <option value="misc">Misc</option>
-                  </select>
+                  <input value={eDesc} onChange={e => setEDesc(e.target.value)} className="brutal-input" placeholder="Damage description" />
                 </div>
                 <div className={styles.formRow}>
                   <label className={styles.fLabel}>SCOPE</label>
-                  <select id="event-scope" value={eScope} onChange={e=>setEScope(e.target.value)} className="game-input">
-                    <option value="global">Global</option>
-                    <option value="city">City-specific</option>
-                    <option value="team">Team-specific</option>
+                  <select value={eScope} onChange={e => setEScope(e.target.value)} className="brutal-input">
+                    <option value="global">Global (All Cities)</option>
+                    <option value="city">City-Specific</option>
                   </select>
                 </div>
                 {eScope === 'city' && (
                   <div className={styles.formRow}>
-                    <label className={styles.fLabel}>CITY</label>
-                    <select id="event-city" value={eCityId} onChange={e=>setECityId(e.target.value)} className="game-input">
-                      <option value="">All cities</option>
+                    <label className={styles.fLabel}>METROPOLIS</label>
+                    <select value={eCityId} onChange={e => setECityId(e.target.value)} className="brutal-input">
+                      <option value="">Select City</option>
                       {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
                 )}
-                {eScope === 'team' && (
-                  <div className={styles.formRow}>
-                    <label className={styles.fLabel}>TEAM</label>
-                    <select id="event-team" value={eTeamId} onChange={e=>setETeamId(e.target.value)} className="game-input">
-                      <option value="">Select team</option>
-                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                  </div>
-                )}
-                <div className={styles.formRow}>
-                  <label className={styles.fLabel}>DURATION (min)</label>
-                  <input id="event-duration" type="number" min={1} value={eDuration} onChange={e=>setEDuration(+e.target.value)} className="game-input" />
-                </div>
-                
-                <h4 style={{gridColumn: '1 / -1', marginTop: '16px', color: 'var(--hot-pink)'}}>TARGETED EFFECTS</h4>
-                <div className={styles.formRow}>
-                  <label className={styles.fLabel}>FUNDS CHANGE</label>
-                  <input type="number" value={eFundChange} onChange={e=>setEFundChange(+e.target.value)} className="game-input" placeholder="e.g. -5000" />
-                </div>
-                <div className={styles.formRow}>
-                  <label className={styles.fLabel}>STABILITY CHANGE</label>
-                  <input type="number" value={eStabilityChange} onChange={e=>setEStabilityChange(+e.target.value)} className="game-input" placeholder="e.g. -10" />
-                </div>
-                <div className={styles.formRow} style={{gridColumn: '1 / -1'}}>
-                  <label className={styles.fLabel}>MARKET PRICE MULTIPLIERS</label>
-                  <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
-                    {['cement','steel','glass','timber','aluminium','copper','labour'].map(slug => (
-                      <div key={slug} style={{display:'flex', flexDirection:'column', gap:'4px'}}>
-                        <span style={{fontSize:'10px', textTransform:'uppercase'}}>{slug} x</span>
+                <div className={styles.formRow} style={{ gridColumn: '1 / -1' }}>
+                  <label className={styles.fLabel}>PRICE MULTIPLIERS (1.0 = Normal, 1.5 = +50%, 0.8 = -20%)</label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {['cement', 'steel', 'glass', 'timber', 'aluminium', 'copper'].map(slug => (
+                      <div key={slug} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '10px', textTransform: 'uppercase' }}>{slug}</span>
                         <input 
                           type="number" step="0.1"
                           value={ePriceEffects[slug] || 1.0}
-                          onChange={e => setEPriceEffects({...ePriceEffects, [slug]: +e.target.value})}
-                          className="game-input"
-                          style={{width:'80px', padding:'4px 8px'}}
+                          onChange={e => setEPriceEffects({ ...ePriceEffects, [slug]: +e.target.value })}
+                          className="brutal-input"
+                          style={{ width: '80px', padding: '6px' }}
                         />
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-              <button id="trigger-event" className="game-btn game-btn-danger" onClick={triggerEvent} disabled={!eTitle}>
-                🚨 TRIGGER EVENT
+              <button className="brutal-btn brutal-btn-lime" style={{ marginTop: '16px' }} onClick={triggerEvent} disabled={!eTitle}>
+                🚨 TRIGGER TARGETED EVENT NOW
               </button>
             </div>
 
             <div className={styles.activeEvents}>
-              <h3 className={styles.subTitle}>ACTIVE EVENTS</h3>
-              {events.filter(e=>e.status==='active').map(ev => (
-                <div key={ev.id} className={`${styles.eventRow} game-card`}>
+              <h3 className={styles.cardTitle}>ACTIVE DISASTERS ({events.filter(e => e.status === 'active').length})</h3>
+              {events.filter(e => e.status === 'active').map(ev => (
+                <div key={ev.id} className={styles.neoCard} style={{ padding: '16px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span className={styles.eventRowTitle}>{ev.title}</span>
-                    <span className={`stat-pill ${ev.event_type === 'disaster' ? 'stat-pill-critical' : 'stat-pill-safe'}`} style={{marginLeft:'8px'}}>{ev.scope}</span>
-                    <p style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'4px'}}>{ev.description}</p>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, color: 'var(--hot-pink)', fontSize: '16px' }}>{ev.title}</span>
+                    <span className="stat-pill stat-pill-critical" style={{ marginLeft: '8px' }}>{ev.scope.toUpperCase()}</span>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{ev.description}</p>
                   </div>
-                  <button id={`expire-${ev.id.slice(0,8)}`} className="game-btn game-btn-ghost game-btn-sm" onClick={() => expireEvent(ev.id)}>Expire</button>
+                  <button className="brutal-btn brutal-btn-white" style={{ fontSize: '11px', padding: '8px 14px' }} onClick={() => expireEvent(ev.id)}>
+                    EXPIRE EVENT ✕
+                  </button>
                 </div>
               ))}
-              {events.filter(e=>e.status==='active').length === 0 && <p style={{color:'var(--text-muted)'}}>No active events</p>}
             </div>
           </div>
         )}
 
-        {/* MARKET TAB */}
+        {/* TAB 4: MARKET TAB */}
         {tab === 'market' && (
-          <div className={styles.marketTab}>
-            <h3 className={styles.subTitle}>PRICE & STOCK CONTROL</h3>
+          <div className={styles.fullViewWrapper}>
+            <h3 className={styles.cardTitle}>REAL-TIME PRICE & STOCK EDITOR</h3>
             <div className={styles.marketControlGrid}>
               {marketPrices.map((mp: any) => (
-                <div key={mp.id} className={`${styles.marketControlCard} game-card`}>
+                <div key={mp.id} className={styles.neoCard} style={{ padding: '16px', gap: '10px' }}>
                   <div className={styles.mcTop}>
-                    <span style={{fontSize:'24px'}}>{mp.resource?.icon}</span>
+                    <span style={{ fontSize: '24px' }}>{mp.resource?.icon}</span>
                     <span className={styles.mcName}>{mp.resource?.name}</span>
                   </div>
                   <div className={styles.mcRow}>
-                    <label className={styles.fLabel}>PRICE ₹</label>
+                    <label className={styles.fLabel}>CURRENT PRICE ₹</label>
                     <input
-                      id={`price-${mp.resource?.slug}`}
                       type="number" min={0}
                       defaultValue={mp.current_price}
-                      className="game-input"
-                      onBlur={e => updateMarketPrice(mp.resource_id, +e.target.value)}
+                      className="brutal-input"
+                      onBlur={e => {
+                        supabase.from('market_prices').update({ current_price: +e.target.value, updated_at: new Date().toISOString() }).eq('resource_id', mp.resource_id).then(loadAll)
+                      }}
                     />
                   </div>
                   <div className={styles.mcRow}>
-                    <label className={styles.fLabel}>STOCK</label>
+                    <label className={styles.fLabel}>AVAILABLE STOCK</label>
                     <input
-                      id={`stock-${mp.resource?.slug}`}
                       type="number" min={0}
                       defaultValue={mp.stock}
-                      className="game-input"
-                      onBlur={e => updateMarketStock(mp.resource_id, +e.target.value)}
+                      className="brutal-input"
+                      onBlur={e => {
+                        supabase.from('market_prices').update({ stock: +e.target.value }).eq('resource_id', mp.resource_id).then(loadAll)
+                      }}
                     />
                   </div>
                 </div>
@@ -490,131 +691,79 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* CHALLENGES TAB */}
+        {/* TAB 5: CHALLENGES & SPEED QUIZZES */}
         {tab === 'challenges' && (
-          <div className={styles.challengesTab}>
+          <div className={styles.fullViewWrapper}>
             <div className={styles.challengeForm}>
-              <h3 className={styles.subTitle}>CREATE CHALLENGE</h3>
+              <h3 className={styles.cardTitle}>CREATE SPEED CHALLENGE / CIVIL QUIZ</h3>
               <div className={styles.formGrid}>
-                <div className={styles.formRow}><label className={styles.fLabel}>TITLE</label><input id="ch-title" value={cTitle} onChange={e=>setCTitle(e.target.value)} className="game-input" /></div>
-                <div className={styles.formRow}><label className={styles.fLabel}>DESCRIPTION</label><input id="ch-desc" value={cDesc} onChange={e=>setCDesc(e.target.value)} className="game-input" /></div>
-                <div className={styles.formRow}><label className={styles.fLabel}>TYPE</label>
-                  <select id="ch-type" value={cType} onChange={e=>setCType(e.target.value)} className="game-input">
-                    <option value="intellectual">Intellectual</option>
-                    <option value="quickfire">Quick-Fire</option>
-                    <option value="physical">Physical</option>
-                    <option value="venue_mission">Venue Mission</option>
-                    <option value="risk">Risk / High-Stakes</option>
-                    <option value="quiz">Quiz</option>
-                  </select>
-                </div>
-                <div className={styles.formRow}><label className={styles.fLabel}>REWARD ₹</label><input id="ch-reward" type="number" value={cReward} onChange={e=>setCReward(+e.target.value)} className="game-input" /></div>
-                <div className={styles.formRow}><label className={styles.fLabel}>PENALTY ₹ (risk)</label><input id="ch-penalty" type="number" value={cPenalty} onChange={e=>setCPenalty(+e.target.value)} className="game-input" /></div>
-                <div className={styles.formRow}><label className={styles.fLabel}>MAX SLOTS</label><input id="ch-slots" type="number" min={1} value={cSlots} onChange={e=>setCSlots(+e.target.value)} className="game-input" /></div>
-                <div className={styles.formRow}><label className={styles.fLabel}>DURATION (min)</label><input id="ch-duration" type="number" min={1} value={cDuration} onChange={e=>setCDuration(+e.target.value)} className="game-input" /></div>
+                <div className={styles.formRow}><label className={styles.fLabel}>TITLE</label><input value={cTitle} onChange={e => setCTitle(e.target.value)} className="brutal-input" placeholder="e.g. Structural Shear Force Quiz" /></div>
+                <div className={styles.formRow}><label className={styles.fLabel}>DESCRIPTION</label><input value={cDesc} onChange={e => setCDesc(e.target.value)} className="brutal-input" placeholder="5 timed multiple-choice questions" /></div>
+                <div className={styles.formRow}><label className={styles.fLabel}>REWARD ₹</label><input type="number" value={cReward} onChange={e => setCReward(+e.target.value)} className="brutal-input" /></div>
+                <div className={styles.formRow}><label className={styles.fLabel}>MAX TEAM SLOTS</label><input type="number" min={1} value={cSlots} onChange={e => setCSlots(+e.target.value)} className="brutal-input" /></div>
               </div>
-              <button id="create-challenge" className="game-btn game-btn-primary" onClick={createChallenge} disabled={!cTitle || !cDesc}>
-                ⚡ CREATE CHALLENGE
+              <button className="brutal-btn brutal-btn-lime" style={{ marginTop: '16px' }} onClick={createChallenge} disabled={!cTitle || !cDesc}>
+                ⚡ DEPLOY CHALLENGE
               </button>
             </div>
 
             <div className={styles.challengeList}>
-              <h3 className={styles.subTitle}>ALL CHALLENGES</h3>
+              <h3 className={styles.cardTitle}>ACTIVE CHALLENGES</h3>
               {challenges.map(ch => (
-                <div key={ch.id} className={`${styles.chRow} game-card`}>
-                  <div className={styles.chInfo}>
-                    <span className={styles.chTitle}>{ch.title}</span>
-                    <span className={`stat-pill ${ch.status === 'active' ? 'stat-pill-critical' : ch.status === 'closed' ? 'stat-pill-warning' : 'stat-pill-info'}`}>{ch.status}</span>
-                    <span style={{fontSize:'12px',color:'var(--text-muted)'}}>{ch.claimed_slots}/{ch.max_slots} slots • ₹{ch.reward_funds.toLocaleString('en-IN')}</span>
+                <div key={ch.id} className={styles.neoCard} style={{ padding: '14px 18px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, color: '#fff', fontSize: '15px' }}>{ch.title}</span>
+                    <span className="stat-pill stat-pill-safe" style={{ marginLeft: '8px' }}>{ch.status.toUpperCase()}</span>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      {ch.claimed_slots}/{ch.max_slots} slots claimed • Reward: ₹{ch.reward_funds.toLocaleString('en-IN')}
+                    </p>
                   </div>
-                  <div className={styles.chActions} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {ch.status === 'upcoming' && <button id={`activate-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-primary game-btn-sm" onClick={() => activateChallenge(ch.id)}>Activate</button>}
-                    {ch.status === 'active' && <button id={`close-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-ghost game-btn-sm" onClick={() => closeChallenge(ch.id)}>Close</button>}
-                    <button 
-                      className="game-btn game-btn-ghost game-btn-sm" 
-                      style={{ color: 'var(--status-critical)', padding: '4px 8px' }}
-                      onClick={async () => {
-                        if (confirm(`Delete challenge "${ch.title}"?`)) {
-                          const res = await deleteChallengeAction(ch.id)
-                          if (!res.success) alert(res.error)
-                          else loadAll()
-                        }
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  <button 
+                    className="brutal-btn brutal-btn-white" 
+                    style={{ color: 'var(--hot-pink)', fontSize: '11px', padding: '6px 12px' }}
+                    onClick={async () => {
+                      if (confirm(`Delete challenge "${ch.title}"?`)) {
+                        await deleteChallengeAction(ch.id)
+                        loadAll()
+                      }
+                    }}
+                  >
+                    DELETE ✕
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* TAB 6: GAMES & ROUNDS */}
         {tab === 'games' && (
-          <div style={{color:'var(--text-secondary)',padding:'24px'}}>
-            <h3 className={styles.subTitle} style={{marginBottom:'16px'}}>GAMES & ROUNDS</h3>
-            <p style={{marginBottom: '24px'}}>Create a new game to generate an access code and set the round countdown timer. Teams must enter this code to unlock their dashboard.</p>
-            
-            <div className={styles.formRow} style={{maxWidth: '520px', marginBottom: '32px'}}>
-              <label className={styles.fLabel}>GAME TITLE & DURATION</label>
-              <div style={{display: 'flex', gap: '8px'}}>
-                <input type="text" className="game-input" placeholder="e.g. Round 1" value={gTitle} onChange={e => setGTitle(e.target.value)} style={{ flex: 2 }} />
-                <input 
-                  type="number" 
-                  min={1} 
-                  max={240}
-                  className="game-input" 
-                  placeholder="Mins" 
-                  value={gDuration} 
-                  onChange={e => setGDuration(Math.max(1, +e.target.value))} 
-                  style={{ width: '85px', textAlign: 'center' }} 
-                  title="Duration in minutes"
-                />
-                <button 
-                  className="game-btn game-btn-primary" 
-                  onClick={async () => {
-                    if (gTitle) { 
-                      const res = await createGame(gTitle, gDuration); 
-                      if (!res.success) {
-                        alert(`Failed to create game: ${res.error}\n\nDid you run the SQL script to create the 'games' table?`);
-                      } else {
-                        setGTitle('');
-                        loadAll(); 
-                      }
-                    }
-                  }}
-                  disabled={!gTitle}
-                >
-                  START GAME
-                </button>
-              </div>
-            </div>
-
-            <h3 className={styles.subTitle} style={{marginBottom:'16px'}}>GAME HISTORY</h3>
-            <div className={styles.gameList} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-              {games.length === 0 ? <p>No games created yet.</p> : games.map(g => (
-                <div key={g.id} style={{padding: '16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+          <div className={styles.fullViewWrapper}>
+            <h3 className={styles.cardTitle}>ROUND ORCHESTRATION & ACCESS CODES</h3>
+            <div className={styles.gameList} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {games.map(g => (
+                <div key={g.id} className={styles.neoCard} style={{ padding: '16px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <h4 style={{color: 'var(--text-primary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <h4 style={{ color: '#fff', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {g.title}
                       {g.status === 'active' && <span className="stat-pill stat-pill-safe">ACTIVE</span>}
                     </h4>
-                    <span style={{fontSize: '13px', color: 'var(--text-muted)'}}>{new Date(g.created_at).toLocaleString()}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Created: {new Date(g.created_at).toLocaleString()}</span>
                   </div>
-                  <div style={{textAlign: 'right'}}>
-                    <div style={{fontSize: '11px', letterSpacing: '0.1em', color: 'var(--text-muted)'}}>ACCESS CODE</div>
-                    <div style={{fontSize: '24px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--neon-lime)', marginBottom: '8px'}}>{g.access_code}</div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>ACCESS CODE</div>
+                    <div style={{ fontSize: '24px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--neon-lime)' }}>{g.access_code}</div>
                     <button 
-                      className="game-btn game-btn-ghost game-btn-sm" 
-                      style={{ color: 'var(--status-critical)', padding: '4px 8px', fontSize: '12px' }}
+                      className="brutal-btn brutal-btn-white" 
+                      style={{ color: 'var(--hot-pink)', fontSize: '10px', padding: '4px 8px', marginTop: '6px' }}
                       onClick={async () => {
-                        if (confirm(`Are you sure you want to delete "${g.title}"?`)) {
-                          await deleteGame(g.id);
-                          loadAll();
+                        if (confirm(`Delete round "${g.title}"?`)) {
+                          await deleteGame(g.id)
+                          loadAll()
                         }
                       }}
                     >
-                      DELETE GAME
+                      DELETE ROUND
                     </button>
                   </div>
                 </div>
@@ -623,48 +772,31 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* TAB 7: CONFIG & DANGER ZONE */}
         {tab === 'config' && (
-          <div style={{color:'var(--text-secondary)',padding:'24px'}}>
-            <h3 className={styles.subTitle} style={{marginBottom:'16px'}}>GAME CONFIGURATION</h3>
-            <div className={styles.formRow} style={{maxWidth: '300px', marginBottom: '24px'}}>
-              <label className={styles.fLabel}>ROUND ACCESS CODE</label>
-              <div style={{display: 'flex', gap: '8px'}}>
-                <input id="admin-access-code" type="text" className="game-input" placeholder="New code" />
-                <button 
-                  className="game-btn game-btn-primary" 
-                  onClick={async () => {
-                    const code = (document.getElementById('admin-access-code') as HTMLInputElement).value
-                    if (code) { await updateAccessCode(code); alert('Access code updated!') }
-                  }}
-                >
-                  Set
-                </button>
-              </div>
-            </div>
-
-            <div style={{marginTop: '40px', padding: '24px', border: '2px solid var(--status-critical)', borderRadius: '4px'}}>
-              <h3 style={{color: 'var(--status-critical)', marginBottom: '16px'}}>DANGER ZONE</h3>
-              <p style={{marginBottom: '16px', color: 'var(--text-muted)'}}>Wipe all teams, buildings, and inventories. This action cannot be undone.</p>
+          <div className={styles.fullViewWrapper}>
+            <div className={styles.neoCard} style={{ padding: '32px', borderColor: 'var(--hot-pink)', maxWidth: '640px' }}>
+              <h2 style={{ fontFamily: 'var(--font-heading)', color: 'var(--hot-pink)', fontSize: '24px', fontWeight: 800, marginBottom: '12px' }}>
+                🚨 DANGER ZONE
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
+                Permanently purge all registered teams, reset all tower buildings, clear inventories, and reset commodity prices back to base values.
+              </p>
               <button 
-                className="game-btn game-btn-danger" 
+                className="brutal-btn brutal-btn-white" 
+                style={{ background: 'var(--hot-pink)', color: '#fff', borderColor: '#000', padding: '16px 24px', fontSize: '14px' }}
                 onClick={async () => {
-                  if (confirm('ARE YOU SURE? This will permanently delete ALL TEAMS and reset the game.')) {
+                  if (confirm('CRITICAL ACTION: Are you sure you want to completely WIPE all teams and reset the game state?')) {
                     await resetGame()
+                    addLog('SYSTEM WIPED: All teams deleted & game state reset.', 'system')
                     loadAll()
                     alert('Game has been reset.')
                   }
                 }}
               >
-                🚨 RESET GAME (DELETE ALL TEAMS)
+                🚨 WIPE ALL TEAMS & RESET GAME STATE
               </button>
             </div>
-          </div>
-        )}
-
-        {tab === 'logs' && (
-          <div style={{color:'var(--text-secondary)',padding:'24px'}}>
-            <h3 className={styles.subTitle} style={{marginBottom:'16px'}}>TRANSACTION LOGS</h3>
-            <p style={{color:'var(--text-muted)',fontSize:'13px'}}>View full transaction history in the Supabase dashboard → transactions table.</p>
           </div>
         )}
       </div>
