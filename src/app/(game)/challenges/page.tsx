@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
 import styles from './page.module.css'
@@ -10,6 +11,7 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }
   physical: { label: 'Physical', color: 'var(--orange)', icon: '💪' },
   venue_mission: { label: 'Venue Mission', color: 'var(--mint)', icon: '📍' },
   risk: { label: 'High Risk', color: 'var(--hot-pink)', icon: '🎲' },
+  quiz: { label: 'Civil Quiz', color: 'var(--neon-lime)', icon: '📝' },
 }
 
 export default function ChallengesPage() {
@@ -108,14 +110,24 @@ export default function ChallengesPage() {
                   {msg?.text && (
                     <div className={`${styles.msg} ${msg.ok ? styles.msgOk : styles.msgErr}`}>{msg.text}</div>
                   )}
-                  <button
-                    id={`claim-${challenge.id.slice(0, 8)}`}
-                    className={`game-btn ${slotsLeft === 0 ? 'game-btn-ghost' : 'game-btn-primary'} ${styles.claimBtn}`}
-                    onClick={() => claimSlot(challenge.id)}
-                    disabled={loading[challenge.id] || slotsLeft === 0 || msg?.ok}
-                  >
-                    {loading[challenge.id] ? 'Claiming...' : slotsLeft === 0 ? '🔒 All Slots Taken' : msg?.ok ? '✅ Claimed' : `CLAIM SLOT (${slotsLeft} left)`}
-                  </button>
+                  {challenge.challenge_type === 'quiz' ? (
+                    <Link
+                      href={`/challenges/quiz?challengeId=${challenge.id}`}
+                      className={`game-btn game-btn-lime ${styles.claimBtn}`}
+                      style={{ textAlign: 'center', justifyContent: 'center' }}
+                    >
+                      📝 ENTER CIVIL QUIZ →
+                    </Link>
+                  ) : (
+                    <button
+                      id={`claim-${challenge.id.slice(0, 8)}`}
+                      className={`game-btn ${slotsLeft === 0 ? 'game-btn-ghost' : 'game-btn-primary'} ${styles.claimBtn}`}
+                      onClick={() => claimSlot(challenge.id)}
+                      disabled={loading[challenge.id] || slotsLeft === 0 || msg?.ok}
+                    >
+                      {loading[challenge.id] ? 'Claiming...' : slotsLeft === 0 ? '🔒 All Slots Taken' : msg?.ok ? '✅ Claimed' : `CLAIM SLOT (${slotsLeft} left)`}
+                    </button>
+                  )}
                 </div>
               )
             })}

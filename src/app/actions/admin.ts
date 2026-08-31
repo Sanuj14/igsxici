@@ -159,7 +159,7 @@ export async function triggerTargetedEvent(eventData: any, effectsData: any) {
   return { success: true }
 }
 
-export async function createGame(title: string) {
+export async function createGame(title: string, durationMinutes: number = 30) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let accessCode = ''
   for (let i = 0; i < 6; i++) {
@@ -187,10 +187,18 @@ export async function createGame(title: string) {
     }
   }
 
+  const endAt = new Date(Date.now() + durationMinutes * 60000).toISOString()
+
   // Create the new game
   const { data, error } = await supabaseAdmin
     .from('games')
-    .insert({ title, access_code: accessCode, status: 'active' })
+    .insert({ 
+      title, 
+      access_code: accessCode, 
+      status: 'active',
+      duration_minutes: durationMinutes,
+      end_at: endAt
+    })
     .select()
     .single()
 
@@ -232,6 +240,16 @@ export async function deleteGame(gameId: string) {
     .from('games')
     .delete()
     .eq('id', gameId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function deleteChallenge(challengeId: string) {
+  const { error } = await supabaseAdmin
+    .from('challenges')
+    .delete()
+    .eq('id', challengeId)
 
   if (error) return { success: false, error: error.message }
   return { success: true }

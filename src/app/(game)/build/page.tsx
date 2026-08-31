@@ -6,11 +6,29 @@ import type { FloorType } from '@/lib/supabase/types'
 import styles from './page.module.css'
 
 export default function BuildPage() {
-  const { team, building, inventory, teamId, loadTeamData } = useGameStore()
+  const { team, building, inventory, events, teamId, loadTeamData } = useGameStore()
   const [floorTypes, setFloorTypes] = useState<FloorType[]>([])
   const [selected, setSelected] = useState<FloorType | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ text: string; ok: boolean } | null>(null)
+
+  const activeDisasters = events.filter(e => e.status === 'active' && (e.event_type === 'disaster' || (e.effects as any)?.construction_pause || (e.effects as any)?.construction_delay))
+  const activeDisaster = activeDisasters[0] || null
+  const [disasterRemaining, setDisasterRemaining] = useState(0)
+
+  useEffect(() => {
+    if (!activeDisaster || !activeDisaster.end_at) {
+      setDisasterRemaining(0)
+      return
+    }
+    const updateCountdown = () => {
+      const diff = Math.max(0, Math.floor((new Date(activeDisaster.end_at).getTime() - Date.now()) / 1000))
+      setDisasterRemaining(diff)
+    }
+    updateCountdown()
+    const timer = setInterval(updateCountdown, 1000)
+    return () => clearInterval(timer)
+  }, [activeDisaster])
 
   useEffect(() => {
     supabase.from('floor_types').select('*').order('tier').then(({ data }) => setFloorTypes(data || []))
@@ -21,6 +39,12 @@ export default function BuildPage() {
   }
 
   function canBuild(ft: FloorType): { ok: boolean; reason?: string } {
+    if (activeDisaster && disasterRemaining > 0) {
+      return { 
+        ok: false, 
+        reason: `🚨 Construction halted by ${activeDisaster.title} (${Math.floor(disasterRemaining / 60)}:${String(disasterRemaining % 60).padStart(2, '0')} remaining)` 
+      }
+    }
     if (!team || team.funds < ft.cash_cost) return { ok: false, reason: `Need ₹${ft.cash_cost.toLocaleString('en-IN')} (you have ₹${team.funds.toLocaleString('en-IN')})` }
     const reqs = ft.resource_requirements as Record<string, number>
     for (const [slug, qty] of Object.entries(reqs)) {
@@ -73,6 +97,39 @@ export default function BuildPage() {
           </div>
         )}
       </div>
+
+      {activeDisaster && disasterRemaining > 0 && (
+        <div style={{
+          background: 'rgba(255,0,85,0.15)',
+          border: '3px solid #ff0055',
+          boxShadow: '0 0 35px rgba(255,0,85,0.4)',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '28px',
+          textAlign: 'center'
+        }}>
+          <span style={{ fontSize: '44px', display: 'block', marginBottom: '8px' }}>🚨</span>
+          <h2 style={{ color: '#ff0055', fontSize: '22px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+            CONSTRUCTION TEMPORARILY HALTED: {activeDisaster.title}
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '15px' }}>
+            {activeDisaster.description}
+          </p>
+          <div style={{ 
+            display: 'inline-block', 
+            background: '#000', 
+            color: '#ff0055', 
+            border: '2px solid #ff0055', 
+            padding: '8px 24px', 
+            borderRadius: '8px', 
+            fontFamily: 'var(--font-mono)', 
+            fontSize: '22px',
+            fontWeight: 800
+          }}>
+            RESUMING IN: {Math.floor(disasterRemaining / 60)}:{String(disasterRemaining % 60).padStart(2, '0')}
+          </div>
+        </div>
+      )}
 
       {result && (
         <div className={`${styles.resultMsg} ${result.ok ? styles.resultOk : styles.resultErr}`}>{result.text}</div>

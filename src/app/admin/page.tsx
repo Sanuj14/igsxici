@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import type { Team, Building, Challenge, Event, City } from '@/lib/supabase/types'
-import { resetGame, removeTeam, triggerTargetedEvent, createGame, deleteGame, expireEvent as expireEventAction, createChallenge as createChallengeAction } from '@/app/actions/admin'
+import { resetGame, removeTeam, triggerTargetedEvent, createGame, deleteGame, deleteChallenge as deleteChallengeAction, expireEvent as expireEventAction, createChallenge as createChallengeAction } from '@/app/actions/admin'
 import styles from './page.module.css'
 
 interface TeamFull extends Team {
@@ -46,6 +46,7 @@ export default function AdminPage() {
 
   // Game form
   const [gTitle, setGTitle] = useState('')
+  const [gDuration, setGDuration] = useState(30)
 
   // Challenge form
   const [cTitle, setCTitle] = useState('')
@@ -526,9 +527,22 @@ export default function AdminPage() {
                     <span className={`stat-pill ${ch.status === 'active' ? 'stat-pill-critical' : ch.status === 'closed' ? 'stat-pill-warning' : 'stat-pill-info'}`}>{ch.status}</span>
                     <span style={{fontSize:'12px',color:'var(--text-muted)'}}>{ch.claimed_slots}/{ch.max_slots} slots • ₹{ch.reward_funds.toLocaleString('en-IN')}</span>
                   </div>
-                  <div className={styles.chActions}>
+                  <div className={styles.chActions} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     {ch.status === 'upcoming' && <button id={`activate-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-primary game-btn-sm" onClick={() => activateChallenge(ch.id)}>Activate</button>}
                     {ch.status === 'active' && <button id={`close-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-ghost game-btn-sm" onClick={() => closeChallenge(ch.id)}>Close</button>}
+                    <button 
+                      className="game-btn game-btn-ghost game-btn-sm" 
+                      style={{ color: 'var(--status-critical)', padding: '4px 8px' }}
+                      onClick={async () => {
+                        if (confirm(`Delete challenge "${ch.title}"?`)) {
+                          const res = await deleteChallengeAction(ch.id)
+                          if (!res.success) alert(res.error)
+                          else loadAll()
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}
@@ -539,17 +553,28 @@ export default function AdminPage() {
         {tab === 'games' && (
           <div style={{color:'var(--text-secondary)',padding:'24px'}}>
             <h3 className={styles.subTitle} style={{marginBottom:'16px'}}>GAMES & ROUNDS</h3>
-            <p style={{marginBottom: '24px'}}>Create a new game to generate an access code. Teams must enter this code to unlock their dashboard and participate in the round.</p>
+            <p style={{marginBottom: '24px'}}>Create a new game to generate an access code and set the round countdown timer. Teams must enter this code to unlock their dashboard.</p>
             
-            <div className={styles.formRow} style={{maxWidth: '400px', marginBottom: '32px'}}>
-              <label className={styles.fLabel}>GAME TITLE</label>
+            <div className={styles.formRow} style={{maxWidth: '520px', marginBottom: '32px'}}>
+              <label className={styles.fLabel}>GAME TITLE & DURATION</label>
               <div style={{display: 'flex', gap: '8px'}}>
-                <input type="text" className="game-input" placeholder="e.g. Round 1" value={gTitle} onChange={e => setGTitle(e.target.value)} />
+                <input type="text" className="game-input" placeholder="e.g. Round 1" value={gTitle} onChange={e => setGTitle(e.target.value)} style={{ flex: 2 }} />
+                <input 
+                  type="number" 
+                  min={1} 
+                  max={240}
+                  className="game-input" 
+                  placeholder="Mins" 
+                  value={gDuration} 
+                  onChange={e => setGDuration(Math.max(1, +e.target.value))} 
+                  style={{ width: '85px', textAlign: 'center' }} 
+                  title="Duration in minutes"
+                />
                 <button 
                   className="game-btn game-btn-primary" 
                   onClick={async () => {
                     if (gTitle) { 
-                      const res = await createGame(gTitle); 
+                      const res = await createGame(gTitle, gDuration); 
                       if (!res.success) {
                         alert(`Failed to create game: ${res.error}\n\nDid you run the SQL script to create the 'games' table?`);
                       } else {

@@ -61,7 +61,7 @@ export default function LeaderboardPage() {
     load()
     const interval = setInterval(() => {
       load()
-    }, 15000)
+    }, 3000)
 
     const channel = supabase.channel('leaderboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'buildings' }, load)

@@ -6,14 +6,15 @@ import styles from './page.module.css'
 export default function DisplayPage() {
   const [entries, setEntries] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
-  const [gameConfig, setGameConfig] = useState<any>({})
+  const [activeGame, setActiveGame] = useState<any>(null)
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
 
   async function load() {
-    const [teamsRes, buildingsRes, eventsRes, configRes] = await Promise.all([
+    const [teamsRes, buildingsRes, eventsRes, gameRes] = await Promise.all([
       supabase.from('teams').select('id, name, funds, score, city:cities(name, color)').order('score', { ascending: false }),
       supabase.from('buildings').select('team_id, height, floors, building_value, structural_stability, sustainability_score'),
       supabase.from('events').select('*').eq('status', 'active').order('created_at', { ascending: false }),
-      supabase.from('game_config').select('*'),
+      supabase.from('games').select('*').eq('status', 'active').single(),
     ])
 
     const buildMap: Record<string, any> = {}
@@ -31,25 +32,49 @@ export default function DisplayPage() {
 
     setEntries(enriched)
     setEvents(eventsRes.data || [])
-
-    const config: Record<string, any> = {}
-    configRes.data?.forEach((r: any) => { config[r.key] = r.value })
-    setGameConfig(config)
+    if (gameRes.data) setActiveGame(gameRes.data)
   }
 
+  // 1. Live Countdown Timer
+  useEffect(() => {
+    if (!activeGame || !activeGame.end_at) {
+      setSecondsRemaining(null)
+      return
+    }
+    const updateCountdown = () => {
+      const diff = Math.max(0, Math.floor((new Date(activeGame.end_at).getTime() - Date.now()) / 1000))
+      setSecondsRemaining(diff)
+    }
+    updateCountdown()
+    const timer = setInterval(updateCountdown, 1000)
+    return () => clearInterval(timer)
+  }, [activeGame])
+
+  // 2. Realtime and 3s Polling
   useEffect(() => {
     load()
+    const pollInterval = setInterval(load, 3000)
     const ch = supabase.channel('display')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'buildings' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, load)
       .subscribe()
-    return () => { supabase.removeChannel(ch) }
+    return () => {
+      clearInterval(pollInterval)
+      supabase.removeChannel(ch)
+    }
   }, [])
 
   const maxHeight = Math.max(...entries.map(e => e.building?.height || 0), 1)
   const top3 = entries.slice(0, 3)
   const rest = entries.slice(3)
+
+  const formatTimer = (secs: number) => {
+    const mins = Math.floor(secs / 60)
+    const rem = secs % 60
+    return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`
+  }
 
   return (
     <div className={styles.displayPage}>
@@ -58,13 +83,31 @@ export default function DisplayPage() {
         <div className={styles.headerLeft}>
           <span className={styles.headerIcon}>🏗️</span>
           <div>
-            <div className={styles.headerTitle}>SKYSCRAPER STREET</div>
-            <div className={styles.headerSub}>LIVE LEADERBOARD</div>
+            <div className={styles.headerTitle}>HIGH-RISE HUSTLE</div>
+            <div className={styles.headerSub}>LIVE DISPLAY ARENA</div>
           </div>
         </div>
         <div className={styles.headerCenter}>
-          <span className={styles.roundBadge}>
-            ROUND {gameConfig.round || 1} — {gameConfig.round_name?.replace(/"/g, '') || 'In Progress'}
+          <span className={styles.roundBadge} style={{ 
+            fontSize: '18px', 
+            padding: '8px 24px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            background: 'var(--bg-elevated)',
+            border: '2px solid var(--neon-lime)'
+          }}>
+            <span>{activeGame?.title?.toUpperCase() || 'ROUND IN PROGRESS'}</span>
+            {secondsRemaining !== null && (
+              <span style={{ 
+                color: secondsRemaining < 120 ? '#ff0055' : 'var(--neon-lime)', 
+                fontFamily: 'var(--font-mono)', 
+                fontWeight: 900,
+                fontSize: '22px'
+              }}>
+                ⏳ {formatTimer(secondsRemaining)}
+              </span>
+            )}
           </span>
         </div>
         <div className={styles.headerRight}>

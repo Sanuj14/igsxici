@@ -31,6 +31,25 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
   const [eventAlert, setEventAlert] = useState<any | null>(null)
   const [challengeAlert, setChallengeAlert] = useState<any | null>(null)
 
+  const { events } = useGameStore()
+  const activeDisasters = events.filter(e => e.status === 'active' && (e.event_type === 'disaster' || (e.effects as any)?.construction_pause || (e.effects as any)?.construction_delay))
+  const activeDisaster = activeDisasters[0] || null
+  const [disasterRemaining, setDisasterRemaining] = useState(0)
+
+  useEffect(() => {
+    if (!activeDisaster || !activeDisaster.end_at) {
+      setDisasterRemaining(0)
+      return
+    }
+    const updateCountdown = () => {
+      const diff = Math.max(0, Math.floor((new Date(activeDisaster.end_at).getTime() - Date.now()) / 1000))
+      setDisasterRemaining(diff)
+    }
+    updateCountdown()
+    const timer = setInterval(updateCountdown, 1000)
+    return () => clearInterval(timer)
+  }, [activeDisaster])
+
   useEffect(() => {
     const unread = notifications.filter(n => !n.read).length
     setUnreadCount(unread)
@@ -84,13 +103,33 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
 
       setCheckingAuth(false)
 
-      // Auto-refresh data every 30 seconds
-      const refreshInterval = setInterval(() => {
-        loadTeamData(profile.team_id)
-        loadEvents()
-        loadChallenges()
-        loadMarket()
-      }, 30000)
+      // Fast auto-refresh polling every 3 seconds for live dashboard updates
+      const refreshInterval = setInterval(async () => {
+        try {
+          // 1. Sync game status
+          const { data: gData } = await supabase.from('games').select('*').eq('status', 'active').single()
+          if (gData) {
+            setActiveGame(gData)
+            setNoActiveGame(false)
+            const { data: tg } = await supabase.from('team_games').select('*').eq('team_id', profile.team_id).eq('game_id', gData.id).single()
+            if (tg) setHasJoined(true)
+          } else {
+            setActiveGame(null)
+            setHasJoined(false)
+            setNoActiveGame(true)
+          }
+
+          // 2. Refresh store data
+          await Promise.all([
+            loadTeamData(profile.team_id),
+            loadEvents(),
+            loadChallenges(),
+            loadMarket(),
+          ])
+        } catch (e) {
+          // ignore transient poll errors
+        }
+      }, 3000)
 
       // Real-time subscriptions
       const channel = supabase.channel(`team-${profile.team_id}`)
@@ -106,10 +145,9 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
           payload => {
             if (payload.new) {
               const ev = payload.new as any
-              // Only show alert for events from current game (active status)
               if (ev.status === 'active') {
                 setEventAlert(ev)
-                setTimeout(() => setEventAlert(null), 7000)
+                setTimeout(() => setEventAlert(null), 8000)
               }
               loadEvents()
             }
@@ -401,6 +439,41 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </header>
+        {/* Active Disaster Flashing Banner */}
+        {activeDisaster && disasterRemaining > 0 && (
+          <div style={{
+            background: 'linear-gradient(90deg, #ff0055, #ff3300, #ff0055)',
+            color: 'white',
+            padding: '12px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontWeight: 800,
+            fontSize: '14px',
+            letterSpacing: '0.04em',
+            boxShadow: '0 4px 20px rgba(255,0,85,0.4)',
+            borderBottom: '2px solid white'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '20px' }}>🚨</span>
+              <span>CITY EMERGENCY: {activeDisaster.title.toUpperCase()} — {activeDisaster.description}</span>
+            </div>
+            <div style={{ 
+              background: '#000', 
+              color: '#ff0055', 
+              border: '2px solid #ff0055', 
+              padding: '6px 14px', 
+              borderRadius: '6px', 
+              fontFamily: 'var(--font-mono)', 
+              fontSize: '15px',
+              fontWeight: 800,
+              whiteSpace: 'nowrap'
+            }}>
+              CONSTRUCTION HALTED: {Math.floor(disasterRemaining / 60)}:{String(disasterRemaining % 60).padStart(2, '0')}
+            </div>
+          </div>
+        )}
+
         <main className={styles.gameContent}>
           {children}
         </main>
