@@ -94,11 +94,24 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   loadEvents: async () => {
-    const { data } = await supabase
+    // Only load events from the current active game's time window
+    const { data: activeGame } = await supabase
+      .from('games')
+      .select('created_at')
+      .eq('status', 'active')
+      .single()
+
+    let query = supabase
       .from('events')
       .select('*')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
+
+    if (activeGame) {
+      query = query.gte('created_at', activeGame.created_at)
+    }
+
+    const { data } = await query
     set({ events: data || [] })
   },
 

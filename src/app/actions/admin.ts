@@ -166,8 +166,28 @@ export async function createGame(title: string) {
     accessCode += chars.charAt(Math.floor(Math.random() * chars.length))
   }
 
+  // Mark previous games as finished
   await supabaseAdmin.from('games').update({ status: 'finished' }).eq('status', 'active')
 
+  // Expire all active events from previous game
+  await supabaseAdmin.from('events').update({ status: 'expired' }).eq('status', 'active')
+
+  // Reset ALL market prices to 1000
+  await supabaseAdmin.from('market_prices').update({ current_price: 1000, stock: 100 }).neq('id', '00000000-0000-0000-0000-000000000000')
+
+  // Reset all team inventories: zero everything out, then set labours to 6
+  const { data: allInventory } = await supabaseAdmin.from('team_inventory').select('id, resource_id')
+  if (allInventory && allInventory.length > 0) {
+    // Zero all
+    await supabaseAdmin.from('team_inventory').update({ quantity: 0 }).neq('id', '00000000-0000-0000-0000-000000000000')
+    // Set labour back to 6
+    const { data: labourResource } = await supabaseAdmin.from('resources').select('id').eq('slug', 'labour').single()
+    if (labourResource) {
+      await supabaseAdmin.from('team_inventory').update({ quantity: 6 }).eq('resource_id', labourResource.id)
+    }
+  }
+
+  // Create the new game
   const { data, error } = await supabaseAdmin
     .from('games')
     .insert({ title, access_code: accessCode, status: 'active' })

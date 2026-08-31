@@ -84,6 +84,14 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
 
       setCheckingAuth(false)
 
+      // Auto-refresh data every 30 seconds
+      const refreshInterval = setInterval(() => {
+        loadTeamData(profile.team_id)
+        loadEvents()
+        loadChallenges()
+        loadMarket()
+      }, 30000)
+
       // Real-time subscriptions
       const channel = supabase.channel(`team-${profile.team_id}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'teams', filter: `id=eq.${profile.team_id}` },
@@ -97,19 +105,33 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' },
           payload => {
             if (payload.new) {
-              setEventAlert(payload.new)
-              setTimeout(() => setEventAlert(null), 6000)
+              const ev = payload.new as any
+              // Only show alert for events from current game (active status)
+              if (ev.status === 'active') {
+                setEventAlert(ev)
+                setTimeout(() => setEventAlert(null), 7000)
+              }
+              loadEvents()
             }
           })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'events' },
+          () => { loadEvents() })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'challenges' },
           payload => {
             if (payload.new) {
               setChallengeAlert(payload.new)
+              loadChallenges()
             }
           })
-        .subscribe()
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'challenges' },
+          () => { loadChallenges() })
 
-      return () => { supabase.removeChannel(channel) }
+      channel.subscribe()
+
+      return () => {
+        clearInterval(refreshInterval)
+        supabase.removeChannel(channel)
+      }
     }
     init()
   }, [])
@@ -167,10 +189,14 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
           <div className="game-card" style={{ maxWidth: '500px', width: '100%', textAlign: 'center', padding: '40px', position: 'relative' }}>
             <button onClick={() => setEventAlert(null)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: 'white', fontSize: '20px', cursor: 'pointer' }}>×</button>
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>
-              {eventAlert.type === 'disaster' ? '🚨' : eventAlert.type === 'bonus' ? '✅' : '📊'}
+              {eventAlert.event_type === 'disaster' ? '🚨' : eventAlert.event_type === 'bonus' ? '✅' : '📊'}
+            </div>
+            <div style={{ fontSize: '12px', letterSpacing: '0.15em', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>
+              {eventAlert.scope === 'global' ? '🌍 GLOBAL EVENT' : eventAlert.scope === 'city' ? '🏙️ CITY EVENT' : '🎯 EVENT'}
             </div>
             <h2 style={{ fontSize: '32px', color: 'var(--hot-pink)', textTransform: 'uppercase', marginBottom: '16px' }}>{eventAlert.title}</h2>
             <p style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>{eventAlert.description}</p>
+            <div style={{ marginTop: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>Auto-dismissing in 7 seconds…</div>
           </div>
         </div>
       )}
