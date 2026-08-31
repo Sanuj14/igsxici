@@ -238,6 +238,7 @@ export async function deleteGame(gameId: string) {
 }
 
 export async function createChallenge(data: any) {
+  const expiresAt = new Date(Date.now() + (data.duration_minutes || 5) * 60000).toISOString()
   const { error } = await supabaseAdmin
     .from('challenges')
     .insert({
@@ -247,8 +248,9 @@ export async function createChallenge(data: any) {
       reward_funds: data.reward_funds,
       penalty_funds: data.penalty_funds,
       max_slots: data.max_slots,
+      duration_minutes: data.duration_minutes,
       status: 'active',
-      end_at: new Date(Date.now() + data.duration_minutes * 60000).toISOString()
+      expires_at: expiresAt
     })
   
   if (error) return { success: false, error: error.message }
