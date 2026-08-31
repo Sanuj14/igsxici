@@ -59,42 +59,77 @@ export default function CitySelectPage() {
   }
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} grid-bg`}>
+      <header className={styles.topNav}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '36px', height: '36px', background: 'var(--neon-lime)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0 #000' }}>
+            <span>🗺️</span>
+          </div>
+          <div>
+            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '15px', letterSpacing: '0.04em' }}>HIGH-RISE HUSTLE</span>
+            <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>PHASE 01: METROPOLIS DEPLOYMENT</span>
+          </div>
+        </div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', background: '#14141E', border: '2px solid #000', padding: '6px 14px', color: 'var(--neon-lime)' }}>
+          STARTING TREASURY: <strong>₹85,000 + BONUS</strong>
+        </div>
+      </header>
+
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <span className={styles.brand}>🏗️ SKYSCRAPER ST.</span>
-          <h1 className={styles.title}>CHOOSE YOUR CITY</h1>
-          <p className={styles.subtitle}>Your city determines starting advantages, risks, and bonus funds. This choice is permanent.</p>
+          <h1 className={styles.title}>SELECT YOUR METROPOLIS</h1>
+          <p className={styles.subtitle}>
+            Your city dictates your strategic advantages, starting bonus funds, and local market vulnerabilities. This deployment is permanent for the round.
+          </p>
         </div>
+
         {selected && (
           <div className={styles.selectedPreview}>
-            <div className={styles.selectedCity} style={{ borderColor: selected.color }}>
-              <div className={styles.selectedDot} style={{ background: selected.color }} />
-              <h2 className={styles.selectedName}>{selected.name}</h2>
-              <p className={styles.selectedDesc}>{selected.description}</p>
-              <div className={styles.selectedBonus}>
-                <span>Starting Funds:</span>
-                <strong>₹{(85000 + selected.starting_bonus).toLocaleString('en-IN')}</strong>
+            <div className={styles.selectedCity} style={{ borderColor: selected.color || 'var(--neon-lime)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0A0A0F', paddingBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className={styles.selectedDot} style={{ background: selected.color }} />
+                  <h2 className={styles.selectedName}>{selected.name.toUpperCase()}</h2>
+                </div>
+                {selected.is_coastal && (
+                  <span className="stat-pill stat-pill-info">🌊 COASTAL HUB</span>
+                )}
               </div>
+
+              <p className={styles.selectedDesc}>{selected.description}</p>
+
+              <div className={styles.selectedBonus}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700 }}>STARTING LIQUID CAPITAL:</span>
+                <strong style={{ color: 'var(--neon-lime)', fontFamily: 'var(--font-mono)', fontSize: '18px' }}>
+                  ₹{(85000 + selected.starting_bonus).toLocaleString('en-IN')}
+                </strong>
+              </div>
+
               <div className={styles.selectedTags}>
                 <div className={styles.tagsGroup}>
-                  <span className={styles.tagLabel} style={{color:'var(--status-safe)'}}>✅ ADVANTAGES</span>
-                  {selected.advantages.map(a => <span key={a} className={`${styles.tag} ${styles.tagGreen}`}>{a}</span>)}
+                  <span className={styles.tagLabel} style={{ color: 'var(--status-safe)' }}>✅ REGIONAL ADVANTAGES</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {selected.advantages.map(a => <span key={a} className={`${styles.tag} ${styles.tagGreen}`}>{a}</span>)}
+                  </div>
                 </div>
                 <div className={styles.tagsGroup}>
-                  <span className={styles.tagLabel} style={{color:'var(--status-critical)'}}>⚠️ RISKS</span>
-                  {selected.risks.map(r => <span key={r} className={`${styles.tag} ${styles.tagRed}`}>{r}</span>)}
+                  <span className={styles.tagLabel} style={{ color: 'var(--status-critical)' }}>⚠️ DISASTER VULNERABILITIES</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {selected.risks.map(r => <span key={r} className={`${styles.tag} ${styles.tagRed}`}>{r}</span>)}
+                  </div>
                 </div>
               </div>
+
               {error && <div className={styles.error}>{error}</div>}
+
               <button
                 id="confirm-city"
-                className="brutal-btn brutal-btn-primary"
-                style={{width:'100%',justifyContent:'center',marginTop:'16px'}}
+                className="brutal-btn brutal-btn-lime"
+                style={{ width: '100%', justifyContent: 'center', marginTop: '16px', padding: '14px', fontSize: '14px', letterSpacing: '0.08em' }}
                 onClick={confirmCity}
                 disabled={loading}
               >
-                {loading ? 'LOCKING IN...' : `CHOOSE ${selected.name.toUpperCase()} →`}
+                {loading ? 'DEPLOYING SQUAD...' : `LOCK IN ${selected.name.toUpperCase()} & COMMENCE →`}
               </button>
             </div>
           </div>

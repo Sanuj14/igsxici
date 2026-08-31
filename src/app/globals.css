@@ -1,55 +1,76 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 
 /* ============================================================
-   SKYSCRAPER STREET — Unified Design System
+   HIGH-RISE HUSTLE — Cyber-Industrial Neo-Brutalist Design System
    ============================================================ */
 
 :root {
-  /* BRAND COLORS */
-  --hot-pink:       #FF2D78;
-  --electric-purple:#7B2FBE;
-  --neon-lime:      #CCFF00;
-  --electric-blue:  #4361EE;
-  --orange:         #FF6B35;
-  --cyan:           #00B4D8;
-  --mint:           #06D6A0;
-  --yellow:         #FFD60A;
-  --deep-red:       #EF233C;
+  /* BRAND HIGH-CHROMA ACCENTS */
+  --hot-pink:          #FF2D78;
+  --secondary-container:#E00363;
+  --neon-lime:         #CCFF00;
+  --primary-container: #C3F400;
+  --cyber-blue:        #00E5FF;
+  --tertiary-container:#9CF0FF;
+  --yellow:            #FFD60A;
+  --electric-purple:   #7B2FBE;
+  --orange:            #FF6B35;
+  --mint:              #05FFA1;
+  --deep-red:          #FF1E56;
 
-  /* DARK GAME PALETTE */
-  --bg-void:        #09090F;
-  --bg-deep:        #0F0F1C;
-  --bg-dark:        #131320;
-  --bg-card:        #191928;
-  --bg-card-hover:  #1E1E30;
-  --bg-elevated:    #242438;
-  --border-subtle:  rgba(255,255,255,0.07);
-  --border-medium:  rgba(255,255,255,0.13);
-  --border-strong:  rgba(255,255,255,0.22);
+  /* DARK VOID GAME SURFACES */
+  --bg-void:           #0E0E13;
+  --bg-deep:           #131318;
+  --bg-dark:           #1B1B20;
+  --bg-card:           #1F1F25;
+  --bg-card-hover:     #2A292F;
+  --bg-elevated:       #35343A;
+  --border-subtle:     #2A292F;
+  --border-medium:     #444933;
+  --border-strong:     #0A0A0F;
 
   /* TEXT */
-  --text-primary:   #F0F0FF;
-  --text-secondary: rgba(240,240,255,0.65);
-  --text-muted:     rgba(240,240,255,0.38);
-  --text-disabled:  rgba(240,240,255,0.18);
+  --text-primary:      #E4E1E9;
+  --text-secondary:    #C4C9AC;
+  --text-muted:        #8E9379;
+  --text-disabled:     #555848;
+
+  /* SHADOWS & BORDERS */
+  --brutal-black:      #0A0A0F;
+  --brutal-white:      #FAFAF8;
+  --brutal-border:     3px solid #0A0A0F;
+  --brutal-shadow:     4px 4px 0px #0A0A0F;
+  --brutal-shadow-lg:  6px 6px 0px #0A0A0F;
+  --hud-shadow:        4px 4px 0px #0A0A0F;
+
+  /* TYPOGRAPHY */
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* RADIUS (Strict Industrial Geometry) */
+  --radius-sm:   0px;
+  --radius-md:   4px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+  --radius-full: 9999px;
 }
 
 [data-theme="light"] {
-  /* LIGHT GAME PALETTE */
-  --bg-void:        #F5F0E8;
-  --bg-deep:        #EAE4D9;
-  --bg-dark:        #DFD9CE;
-  --bg-card:        #FFFFFF;
-  --bg-card-hover:  #FAFAFA;
-  --bg-elevated:    #FFFFFF;
-  --border-subtle:  #D0CCC3;
-  --border-medium:  rgba(10,10,10,0.2);
-  --border-strong:  rgba(10,10,10,0.5);
+  --bg-void:           #F4F0E8;
+  --bg-deep:           #ECE7DD;
+  --bg-dark:           #E2DCD0;
+  --bg-card:           #FFFFFF;
+  --bg-card-hover:     #F9F7F2;
+  --bg-elevated:       #FFFFFF;
+  --border-subtle:     #D5CEC0;
+  --border-medium:     #0A0A0F;
+  --border-strong:     #0A0A0F;
 
-  --text-primary:   #0A0A0A;
-  --text-secondary: rgba(10,10,10,0.65);
-  --text-muted:     rgba(10,10,10,0.4);
-  --text-disabled:  rgba(10,10,10,0.2);
+  --text-primary:      #0A0A0F;
+  --text-secondary:    #303036;
+  --text-muted:        #606066;
+  --text-disabled:     #909096;
 }
 
 :root {
@@ -417,3 +438,40 @@ h1, h2, h3, h4, h5, h6 { font-family: var(--font-body); font-weight: 700; line-h
 @media (max-width: 1024px) {
   .hide-tablet { display: none !important; }
 }
+
+/* ============================================================
+   CYBER-INDUSTRIAL UTILITIES (From Design System)
+   ============================================================ */
+.grid-bg {
+  background-size: 32px 32px;
+  background-image:
+    linear-gradient(to right, #1B1B22 1px, transparent 1px),
+    linear-gradient(to bottom, #1B1B22 1px, transparent 1px);
+}
+[data-theme="light"] .grid-bg {
+  background-image:
+    linear-gradient(to right, #E2DCD0 1px, transparent 1px),
+    linear-gradient(to bottom, #E2DCD0 1px, transparent 1px);
+}
+
+.ticker-wrap {
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.ticker-content {
+  display: inline-block;
+  white-space: nowrap;
+  padding-left: 100%;
+  animation: tickerScroll 28s linear infinite;
+}
+@keyframes tickerScroll {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
+}
+
+.table-col-divider {
+  border-right: 2px solid var(--border-medium);
+}
+

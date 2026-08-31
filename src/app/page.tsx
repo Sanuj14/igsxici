@@ -3,185 +3,242 @@ import styles from './page.module.css'
 
 export default function LandingPage() {
   return (
-    <main className={styles.landing}>
-      {/* NAV */}
-      <nav className={styles.nav}>
-        <div className={styles.navLogo}>
-          <span className={styles.navLogoIcon}>🏗️</span>
-          <span className={styles.navLogoText}>HIGH-RISE HUSTLE</span>
+    <main className={`${styles.landing} grid-bg`}>
+      {/* TOP NAVIGATION */}
+      <header className={styles.nav}>
+        <div className={styles.navBrand}>
+          <div className={styles.navLogoBox}>
+            <span style={{ fontSize: '20px' }}>🏗️</span>
+          </div>
+          <div>
+            <span className={styles.navTitle}>HIGH-RISE HUSTLE</span>
+            <span className={styles.navSub}>URBAN STRATEGY ARENA</span>
+          </div>
         </div>
-        <div className={styles.navLinks}>
-          <a href="#rules">Rules</a>
-          <a href="#cities">Cities</a>
-          <a href="#leaderboard">Leaderboard</a>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <Link href="/admin/login" className="brutal-btn brutal-btn-white" style={{ border: '2px solid #000' }}>
-            ADMIN
+
+        <nav className={styles.navLinks}>
+          <a href="#features">FEATURES</a>
+          <a href="#protocol">HOW TO PLAY</a>
+          <a href="#cities">CITIES</a>
+          <Link href="/display" target="_blank">LIVE ARENA ↗</Link>
+        </nav>
+
+        <div className={styles.navActions}>
+          <Link href="/admin/login" className="brutal-btn brutal-btn-white" style={{ padding: '8px 14px', fontSize: '11px' }}>
+            ⚡ ADMIN
           </Link>
-          <Link href="/login" className="brutal-btn brutal-btn-black">
-            JOIN GAME →
+          <Link href="/login" className="brutal-btn brutal-btn-white" style={{ padding: '8px 16px', fontSize: '12px' }}>
+            TEAM LOGIN
+          </Link>
+          <Link href="/register" className="brutal-btn brutal-btn-lime" style={{ padding: '8px 18px', fontSize: '12px' }}>
+            REGISTER TEAM →
           </Link>
         </div>
-      </nav>
+      </header>
+
+      {/* LIVE MARKET TICKER */}
+      <div className={styles.tickerBar}>
+        <div className={styles.tickerTag}>
+          <span className={styles.pulseDot} />
+          LIVE COMMODITY FEED
+        </div>
+        <div className="ticker-wrap" style={{ flex: 1 }}>
+          <div className="ticker-content" style={{ display: 'inline-flex', gap: '32px', fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700 }}>
+            <span>🏗️ CEMENT: <strong style={{ color: 'var(--neon-lime)' }}>₹1,300 (+30% 📈)</strong></span>
+            <span>⚙️ STEEL: <strong style={{ color: 'var(--neon-lime)' }}>₹4,500 (+15% 📈)</strong></span>
+            <span>🪟 GLASS: <strong style={{ color: 'var(--hot-pink)' }}>₹2,100 (-12% 📉)</strong></span>
+            <span>🌲 TIMBER: <strong>₹950</strong></span>
+            <span>🔩 ALUMINIUM: <strong style={{ color: 'var(--neon-lime)' }}>₹3,200 (+8% 📈)</strong></span>
+            <span>🔌 COPPER: <strong>₹5,800</strong></span>
+            <span>🚨 ACTIVE EVENT: <strong>MONSOON SURGE IN MUMBAI</strong></span>
+            <span>📝 CHALLENGE LIVE: <strong>CIVIL ENGINEERING SPEED QUIZ</strong></span>
+          </div>
+        </div>
+      </div>
 
       {/* HERO BENTO GRID */}
-      <section className={styles.heroGrid}>
-        {/* Main Hero */}
-        <div className={`${styles.heroMain} brutal-card block-white`}>
-          <div className={styles.heroTag}>
-            <span className={styles.liveDot} />
-            LIVE STRATEGY EVENT
+      <section className={styles.heroSection}>
+        <div className={styles.heroMain}>
+          <div className={styles.heroBadge}>
+            <span className={styles.badgePulse} />
+            INTER-COLLEGIATE STRATEGY ARENA • 2026
           </div>
-          <h1 className={`${styles.heroTitle} text-hero`}>
-            HIGH-RISE<br />
-            <span className={styles.heroTitleAccent}>HUSTLE.</span>
+          
+          <h1 className={styles.heroHeading}>
+            BUILD YOUR<br />
+            <span style={{ color: 'var(--neon-lime)', textShadow: '3px 3px 0 #000' }}>EMPIRE.</span><br />
+            <span style={{ color: 'var(--hot-pink)' }}>SURVIVE THE MARKET.</span>
           </h1>
-          <p className={styles.heroDesc}>
-            Build the tallest, most valuable skyscraper in India.
-            Survive disasters. Trade with rivals. Race for limited opportunities.
-            Only the smartest team wins.
+
+          <p className={styles.heroParagraph}>
+            Compete across 15 Indian metropolises. Trade 6 volatile commodities on a live order book. 
+            Balance architectural height with structural stability, weather urban disasters, and climb the live auditorium scoreboard.
           </p>
-          <div className={styles.heroActions}>
-            <Link href="/register" className="brutal-btn brutal-btn-primary">
-              REGISTER TEAM →
+
+          <div className={styles.heroButtons}>
+            <Link href="/register" className="brutal-btn brutal-btn-lime" style={{ padding: '16px 32px', fontSize: '14px', letterSpacing: '0.08em' }}>
+              🏗️ REGISTER TEAM [₹85,000 STARTING BONUS] →
             </Link>
-            <Link href="/login" className="brutal-btn brutal-btn-white">
-              TEAM LOGIN ↗
+            <Link href="/login" className="brutal-btn brutal-btn-white" style={{ padding: '16px 28px', fontSize: '14px' }}>
+              🎮 ENTER ACTIVE ROUND
             </Link>
           </div>
-          <div className={styles.heroSocials}>
-            <span className="text-label text-muted">CONNECT WITH ME</span>
+
+          <div className={styles.heroStatsRow}>
+            <div className={styles.heroStat}>
+              <span className={styles.statNumber}>15</span>
+              <span className={styles.statLabel}>INDIAN CITIES</span>
+            </div>
+            <div className={styles.heroStat}>
+              <span className={styles.statNumber}>12</span>
+              <span className={styles.statLabel}>FLOOR BLUEPRINTS</span>
+            </div>
+            <div className={styles.heroStat}>
+              <span className={styles.statNumber} style={{ color: 'var(--neon-lime)' }}>6+</span>
+              <span className={styles.statLabel}>DYNAMIC COMMODITIES</span>
+            </div>
+            <div className={styles.heroStat}>
+              <span className={styles.statNumber} style={{ color: 'var(--hot-pink)' }}>4K</span>
+              <span className={styles.statLabel}>LIVE SCOREBOARD</span>
+            </div>
           </div>
         </div>
 
-        {/* Pink block */}
-        <div className={`${styles.heroPink} block-pink brutal-card`}>
-          <div className={styles.skyscraperViz}>
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className={styles.skyFloor} style={{
-                height: `${12 + i * 4}px`,
-                background: i % 2 === 0 ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)',
-                width: `${60 + i * 8}px`
-              }} />
-            ))}
+        {/* RIGHT COLUMN: INTERACTIVE VISUALIZER CARDS */}
+        <div className={styles.heroAside}>
+          {/* Visual Skyscraper Card */}
+          <div className={styles.towerCard}>
+            <div className={styles.cardHeaderStrip} style={{ background: 'var(--hot-pink)', color: '#fff' }}>
+              <span>SECTOR TOWER SIMULATION</span>
+              <span style={{ fontFamily: 'var(--font-mono)' }}>LIVE</span>
+            </div>
+            <div className={styles.towerCanvas}>
+              <div className={styles.towerStack}>
+                <div className={styles.floorBlock} style={{ width: '50px', background: 'var(--hot-pink)' }}>PENTHOUSE +6m</div>
+                <div className={styles.floorBlock} style={{ width: '70px', background: 'var(--neon-lime)', color: '#000' }}>OFFICE SUITE +4m</div>
+                <div className={styles.floorBlock} style={{ width: '90px', background: 'var(--cyber-blue)', color: '#000' }}>COMMERCIAL +4m</div>
+                <div className={styles.floorBlock} style={{ width: '110px', background: 'var(--yellow)', color: '#000' }}>RETAIL HUB +3.5m</div>
+                <div className={styles.floorBlock} style={{ width: '130px', background: '#35343A', color: '#fff' }}>FOUNDATION CORE +5m</div>
+              </div>
+              <div className={styles.towerHeightPill}>
+                HEIGHT: <strong>68 METERS</strong>
+              </div>
+            </div>
           </div>
-          <p className={styles.pinkLabel}>BUILD TO THE SKY</p>
-        </div>
 
-        {/* Code block */}
-        <div className={`${styles.heroCode} block-dark brutal-card`}>
-          <div className={styles.codeHeader}>
-            <span className={styles.codeDot} style={{ background: '#FF5F57' }} />
-            <span className={styles.codeDot} style={{ background: '#FFBD2E' }} />
-            <span className={styles.codeDot} style={{ background: '#28C840' }} />
-          </div>
-          <pre className={styles.codeContent}>{`> const team = {
-  city: "Mumbai",
-  funds: ₹85,000,
-  floors: 12,
-  height: "48m",
-  status: "building"
-}`}</pre>
-        </div>
-
-        {/* Skills row */}
-        <div className={`${styles.heroSkills} block-white brutal-card`}>
-          <div className={styles.skillsLabel}>
-            <span className={styles.skillsTag}>RESOURCES</span>
-            <span>→</span>
-          </div>
-          <div className={styles.skillsRow}>
-            {['🏗️ Cement', '⚙️ Steel', '🪟 Glass', '🌲 Timber', '🔩 Aluminium', '🔌 Copper'].map(s => (
-              <div key={s} className={styles.skillChip}>{s}</div>
-            ))}
+          {/* Disaster Threat Card */}
+          <div className={styles.threatCard}>
+            <div className={styles.cardHeaderStrip} style={{ background: 'var(--deep-red)', color: '#fff' }}>
+              <span>🚨 ACTIVE EMERGENCY THREAT</span>
+              <span>02:15</span>
+            </div>
+            <div style={{ padding: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '6px', color: 'var(--hot-pink)' }}>
+                MONSOON FLASH FLOOD
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '12px' }}>
+                Lower floors flooded. Cement trading price surged +30%. Construction temporarily halted across coastal cities.
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <span className="stat-pill stat-pill-critical">HAZARD LVL 4</span>
+                <span className="stat-pill stat-pill-warning">MARKET SURGE</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* STATS BAR */}
-      <section className={styles.statsBar}>
-        {[
-          { label: 'Teams', value: '24+', color: 'var(--hot-pink)' },
-          { label: 'Cities', value: '15', color: 'var(--electric-purple)' },
-          { label: 'Rounds', value: '8', color: 'var(--electric-blue)' },
-          { label: 'Resources', value: '6', color: 'var(--mint)' },
-          { label: 'Challenge Types', value: '5', color: 'var(--yellow)' },
-        ].map(stat => (
-          <div key={stat.label} className={styles.statItem}>
-            <span className={styles.statValue} style={{ color: stat.color }}>{stat.value}</span>
-            <span className={styles.statLabel}>{stat.label}</span>
-          </div>
-        ))}
-      </section>
-
-      {/* FEATURED — HOW IT WORKS */}
-      <section className={styles.howItWorks} id="rules">
+      {/* CORE GAMEPLAY PILLARS */}
+      <section id="features" className={styles.featuresSection}>
         <div className={styles.sectionHeader}>
-          <h2 className={`${styles.sectionTitle} text-h1`}>HOW IT WORKS</h2>
-          <Link href="/register" className="brutal-btn brutal-btn-lime">START PLAYING →</Link>
+          <span className={styles.sectionPre}>SYSTEM ARCHITECTURE</span>
+          <h2 className={styles.sectionTitle}>THE 4 PILLARS OF HIGH-RISE HUSTLE</h2>
         </div>
 
-        <div className={styles.stepsGrid}>
-          {[
-            { num: '01', title: 'CHOOSE YOUR CITY', desc: 'Pick from 15 Indian cities. Each has unique advantages, risks, and a starting bonus.', color: 'var(--hot-pink)', bg: 'block-pink' },
-            { num: '02', title: 'BUY RESOURCES', desc: 'Purchase Cement, Steel, Glass and more from the live marketplace. Prices fluctuate.', color: 'var(--electric-purple)', bg: 'block-purple' },
-            { num: '03', title: 'BUILD FLOORS', desc: 'Construct unlimited floors across 12 unique types. Balance height, value, stability and sustainability.', color: 'var(--electric-blue)', bg: 'block-blue' },
-            { num: '04', title: 'SURVIVE DISASTERS', desc: 'Admin triggers real-time floods, earthquakes, market crashes. Adapt or lose.', color: 'var(--brutal-black)', bg: 'block-dark' },
-            { num: '05', title: 'TRADE & NEGOTIATE', desc: 'Trade resources directly with rival teams. Create alliances or crush competitors.', color: 'var(--orange)', bg: 'block-white' },
-            { num: '06', title: 'CLAIM CHALLENGES', desc: 'Race for limited-slot dares worth ₹15,000+. First come, first served. No exceptions.', color: 'var(--neon-lime)', bg: 'block-lime' },
-          ].map(step => (
-            <div key={step.num} className={`${styles.stepCard} ${step.bg} brutal-card`}>
-              <span className={styles.stepNum} style={{ color: step.color }}>{step.num}</span>
-              <h3 className={styles.stepTitle}>{step.title}</h3>
-              <p className={styles.stepDesc}>{step.desc}</p>
-            </div>
-          ))}
+        <div className={styles.featuresGrid}>
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>🏙️</div>
+            <h3 className={styles.featureName}>15 Indian Metropolises</h3>
+            <p className={styles.featureDesc}>
+              Select Mumbai, Bengaluru, Delhi, Chennai, Kolkata, or 10 other cities. Each features distinct starting funds, regional material discounts, and natural disaster profiles.
+            </p>
+            <div className={styles.featureTag}>GEOGRAPHIC ADVANTAGE</div>
+          </div>
+
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>📈</div>
+            <h3 className={styles.featureName}>Volatile Commodity Trading</h3>
+            <p className={styles.featureDesc}>
+              Buy and sell Cement, Steel, Glass, Timber, Aluminium, and Copper on a real-time order book. Exploit sudden market booms and corner resources before rivals.
+            </p>
+            <div className={styles.featureTag}>LIVE ORDER BOOK</div>
+          </div>
+
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>⚡</div>
+            <h3 className={styles.featureName}>Disasters & Speed Quizzes</h3>
+            <p className={styles.featureDesc}>
+              Weather targeted urban disasters like earthquakes and supply chain collapses. Compete in timed 5-question civil engineering speed quizzes for massive instant cash rewards.
+            </p>
+            <div className={styles.featureTag}>SPEED CHALLENGES</div>
+          </div>
+
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>🏢</div>
+            <h3 className={styles.featureName}>Structural Engineering</h3>
+            <p className={styles.featureDesc}>
+              Balance vertical height, floor tier synergies, structural stability, and green sustainability ratings. Build high, but build strong—unstable towers can face critical penalties!
+            </p>
+            <div className={styles.featureTag}>PHYSICS & STABILITY</div>
+          </div>
         </div>
       </section>
 
-      {/* CITIES SECTION */}
-      <section className={styles.citiesSection} id="cities">
-        <div className={`${styles.citiesLeft} block-pink brutal-card`}>
-          <h2 className={`text-h1`} style={{ color: 'white' }}>
-            15 CITIES.<br />
-            INFINITE<br />
-            STRATEGIES.
-          </h2>
-          <Link href="/register" className="brutal-btn brutal-btn-black" style={{ marginTop: '24px' }}>
-            PICK YOUR CITY →
-          </Link>
+      {/* HOW TO PLAY PROTOCOL */}
+      <section id="protocol" className={styles.protocolSection}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionPre}>OPERATIONAL PROTOCOL</span>
+          <h2 className={styles.sectionTitle}>HOW YOUR TEAM COMPETES</h2>
         </div>
-        <div className={styles.citiesGrid}>
-          {['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Kochi', 'Chandigarh'].map((city, i) => (
-            <div key={city} className={`${styles.cityCard} brutal-card block-white`}>
-              <span className={styles.cityDot} style={{ background: ['#FF2D78','#7B2FBE','#4361EE','#FF6B35','#06D6A0','#FFD60A','#FF9F1C','#2EC4B6','#E91E8C','#00B4D8','#52B788','#90E0EF'][i] }} />
-              <span className={styles.cityName}>{city}</span>
-            </div>
-          ))}
+
+        <div className={styles.protocolSteps}>
+          <div className={styles.stepCard}>
+            <div className={styles.stepNum}>01</div>
+            <h3 className={styles.stepTitle}>Register Team & Claim City</h3>
+            <p className={styles.stepDesc}>Create your team account, lock in your starting metropolis on the interactive map, and receive starting cash reserves.</p>
+          </div>
+
+          <div className={styles.stepCard}>
+            <div className={styles.stepNum}>02</div>
+            <h3 className={styles.stepTitle}>Enter Round Access Code</h3>
+            <p className={styles.stepDesc}>When the admin triggers a round, enter the 6-character access code on your dashboard to unlock the active game floor.</p>
+          </div>
+
+          <div className={styles.stepCard}>
+            <div className={styles.stepNum}>03</div>
+            <h3 className={styles.stepTitle}>Trade, Build & Quiz</h3>
+            <p className={styles.stepDesc}>Purchase materials on the marketplace, construct floors tier-by-tier, and take timed challenges to boost funds.</p>
+          </div>
+
+          <div className={styles.stepCard}>
+            <div className={styles.stepNum}>04</div>
+            <h3 className={styles.stepTitle}>Dominate the 4K Arena</h3>
+            <p className={styles.stepDesc}>Watch your skyscraper rise in real-time on the main projector leaderboard. The team with the highest evaluated score wins!</p>
+          </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className={`${styles.ctaSection} block-dark brutal-card`}>
-        <div className={styles.ctaLeft}>
-          <h2 className="text-h1" style={{ color: 'var(--neon-lime)' }}>
-            LET'S BUILD<br />
-            SOMETHING<br />
-            AMAZING.
-          </h2>
-        </div>
-        <div className={styles.ctaRight}>
-          <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '24px', maxWidth: '400px' }}>
-            Register your team now and get ready for the most intense strategy experience at the event. 
-            ₹85,000 starting funds. The clock is ticking.
-          </p>
-          <div className={styles.ctaActions}>
-            <Link href="/register" className="brutal-btn brutal-btn-lime">
-              REGISTER TEAM →
+      {/* CALL TO ACTION */}
+      <section className={styles.ctaSection}>
+        <div className={styles.ctaBox}>
+          <h2 className={styles.ctaTitle}>READY TO ENTER THE ARENA?</h2>
+          <p className={styles.ctaSubtitle}>Register your college team now to secure your starting slot and claim ₹85,000 bonus funds.</p>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/register" className="brutal-btn brutal-btn-lime" style={{ padding: '16px 36px', fontSize: '15px' }}>
+              CREATE TEAM ACCOUNT →
             </Link>
-            <Link href="/login" className="brutal-btn brutal-btn-white">
-              TEAM LOGIN ↗
+            <Link href="/login" className="brutal-btn brutal-btn-white" style={{ padding: '16px 32px', fontSize: '15px' }}>
+              TEAM SIGN IN
             </Link>
           </div>
         </div>
@@ -189,15 +246,17 @@ export default function LandingPage() {
 
       {/* FOOTER */}
       <footer className={styles.footer}>
-        <div className={styles.footerLeft}>
-          <span className={styles.navLogoText}>© 2024 HIGH-RISE HUSTLE</span>
-        </div>
-        <div className={styles.footerCenter}>
-          <span>© 2026 IGS × ICI. All rights reserved.</span>
-        </div>
-        <div className={styles.footerRight}>
-          <Link href="/admin" style={{ opacity: 0.4, fontSize: '12px' }}>Admin</Link>
-          <Link href="/display" style={{ opacity: 0.4, fontSize: '12px' }}>Display</Link>
+        <div className={styles.footerContent}>
+          <div className={styles.footerBrand}>
+            <span style={{ fontSize: '24px' }}>🏗️</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '14px', letterSpacing: '0.08em' }}>HIGH-RISE HUSTLE</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>CIVIL & URBAN STRATEGY ARENA</div>
+            </div>
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+            POWERED BY IGS X ICI • ALL RIGHTS RESERVED 2026
+          </div>
         </div>
       </footer>
     </main>
