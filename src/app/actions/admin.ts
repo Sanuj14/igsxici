@@ -172,8 +172,8 @@ export async function createGame(title: string) {
   // Expire all active events from previous game
   await supabaseAdmin.from('events').update({ status: 'expired' }).eq('status', 'active')
 
-  // Reset ALL market prices to 1000
-  await supabaseAdmin.from('market_prices').update({ current_price: 1000, stock: 100 }).neq('id', '00000000-0000-0000-0000-000000000000')
+  // Reset ALL market stock quantities to 1000 (prices stay as configured)
+  await supabaseAdmin.from('market_prices').update({ stock: 1000 }).neq('id', '00000000-0000-0000-0000-000000000000')
 
   // Reset all team inventories: zero everything out, then set labours to 6
   const { data: allInventory } = await supabaseAdmin.from('team_inventory').select('id, resource_id')
