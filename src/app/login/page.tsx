@@ -50,7 +50,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className={styles.authPage}>
+    <main className={`${styles.authPage} grid-bg`}>
       <div className={styles.authLeft}>
         <div className={styles.authBrand}>
           <span className={styles.authBrandIcon}>🏗️</span>
@@ -58,10 +58,10 @@ export default function LoginPage() {
         </div>
         <div className={styles.authHero}>
           <h1 className={styles.authHeroTitle}>BUILD YOUR<br />EMPIRE.</h1>
-          <p className={styles.authHeroSub}>Sign in to access your team dashboard and start building.</p>
+          <p className={styles.authHeroSub}>Sign in to access your team command center and start building.</p>
         </div>
         <div className={styles.authStats}>
-          {[{v:'15', l:'Cities'},{v:'12', l:'Floor Types'},{v:'6', l:'Resources'},{v:'∞', l:'Strategies'}].map(s=>(
+          {[{v:'15', l:'Metropolises'},{v:'12', l:'Floor Types'},{v:'6', l:'Commodities'},{v:'∞', l:'Strategies'}].map(s=>(
             <div key={s.l} className={styles.authStat}>
               <span className={styles.authStatVal}>{s.v}</span>
               <span className={styles.authStatLab}>{s.l}</span>
@@ -73,7 +73,7 @@ export default function LoginPage() {
         <div className={styles.authCard}>
           <div className={styles.authCardHeader}>
             <h2 className={styles.authTitle}>TEAM LOGIN</h2>
-            <p className={styles.authSub}>Enter your credentials to continue</p>
+            <p className={styles.authSub}>Enter team credentials to access round</p>
           </div>
           <form className={styles.authForm} onSubmit={handleLogin}>
             {error && <div className={styles.authError}>{error}</div>}
@@ -104,19 +104,19 @@ export default function LoginPage() {
             <button
               id="login-submit"
               type="submit"
-              className="brutal-btn brutal-btn-primary"
-              style={{ width: '100%', justifyContent: 'center' }}
+              className="brutal-btn brutal-btn-lime"
+              style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '14px' }}
               disabled={loading}
             >
               {loading ? 'SIGNING IN...' : 'SIGN IN →'}
             </button>
           </form>
           <div className={styles.authFooter}>
-            <p>Don&apos;t have a team? <Link href="/register" style={{fontWeight:700,textDecoration:'underline'}}>Register here</Link></p>
-            <p style={{marginTop:'8px', opacity:0.5, fontSize:'13px'}}>Admin? <Link href="/admin/login" style={{fontWeight:600}}>Admin login</Link></p>
+            <p>Don&apos;t have a team? <Link href="/register">Register here</Link></p>
+            <p style={{marginTop:'10px', fontSize:'13px'}}>Admin? <Link href="/admin/login">Admin Console</Link></p>
           </div>
         </div>
-        <Link href="/" className="brutal-btn brutal-btn-white" style={{marginTop:'16px', alignSelf:'flex-start'}}>← BACK TO HOME</Link>
+        <Link href="/" className="brutal-btn brutal-btn-white" style={{marginTop:'20px', alignSelf:'center'}}>← BACK TO HOME</Link>
       </div>
     </main>
   )

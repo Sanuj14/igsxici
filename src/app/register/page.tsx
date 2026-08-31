@@ -68,25 +68,25 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className={styles.authPage}>
-      <div className={styles.authLeft} style={{ background: 'var(--electric-purple)' }}>
+    <main className={`${styles.authPage} grid-bg`}>
+      <div className={styles.authLeft}>
         <div className={styles.authBrand}>
           <span className={styles.authBrandIcon}>🏗️</span>
           <span className={styles.authBrandName}>HIGH-RISE HUSTLE</span>
         </div>
         <div className={styles.authHero}>
-          <h1 className={styles.authHeroTitle} style={{ color: 'var(--neon-lime)' }}>
+          <h1 className={styles.authHeroTitle}>
             JOIN THE<br />RACE.
           </h1>
           <p className={styles.authHeroSub}>
-            Register your team, pick your city, and start building.
+            Register your team, claim your metropolis, and start building.
             ₹85,000 starting funds await.
           </p>
         </div>
         <div className={styles.authStats}>
           {[
-            { v: '₹85K', l: 'Starting Funds' },
-            { v: '15', l: 'Cities' },
+            { v: '₹85K', l: 'Starting Capital' },
+            { v: '15', l: 'Metropolises' },
             { v: '8', l: 'Rounds' },
             { v: '∞', l: 'Floors' },
           ].map(s => (
@@ -102,7 +102,7 @@ export default function RegisterPage() {
         <div className={styles.authCard}>
           <div className={styles.authCardHeader}>
             <h2 className={styles.authTitle}>REGISTER TEAM</h2>
-            <p className={styles.authSub}>Create your team to enter the game</p>
+            <p className={styles.authSub}>Create your team to enter the active arena</p>
           </div>
 
           <form className={styles.authForm} onSubmit={handleRegister}>
@@ -114,7 +114,7 @@ export default function RegisterPage() {
                 id="team-name"
                 type="text"
                 className="brutal-input"
-                placeholder="e.g. Team Alpha"
+                placeholder="e.g. Skyline Apex"
                 value={teamName}
                 onChange={e => setTeamName(e.target.value)}
                 required
@@ -134,7 +134,6 @@ export default function RegisterPage() {
                 required
               />
             </div>
-
 
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>PASSWORD</label>
@@ -165,20 +164,20 @@ export default function RegisterPage() {
             <button
               id="register-submit"
               type="submit"
-              className="brutal-btn brutal-btn-secondary"
-              style={{ width: '100%', justifyContent: 'center' }}
+              className="brutal-btn brutal-btn-lime"
+              style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '14px' }}
               disabled={loading}
             >
-              {loading ? 'CREATING TEAM...' : 'CREATE TEAM →'}
+              {loading ? 'CREATING TEAM...' : 'CREATE TEAM & JOIN →'}
             </button>
           </form>
 
           <div className={styles.authFooter}>
-            <p>Already registered? <Link href="/login" style={{ fontWeight: 700, textDecoration: 'underline' }}>Sign in here</Link></p>
+            <p>Already registered? <Link href="/login">Sign in here</Link></p>
           </div>
         </div>
 
-        <Link href="/" className="brutal-btn brutal-btn-white" style={{ marginTop: '16px', alignSelf: 'flex-start' }}>
+        <Link href="/" className="brutal-btn brutal-btn-white" style={{ marginTop: '20px', alignSelf: 'center' }}>
           ← BACK TO HOME
         </Link>
       </div>

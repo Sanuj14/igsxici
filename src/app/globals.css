@@ -215,22 +215,26 @@ h1, h2, h3, h4, h5, h6 { font-family: var(--font-body); font-weight: 700; line-h
 .block-blue   { background: var(--electric-blue); }
 .block-orange { background: var(--orange); }
 .block-dark   { background: var(--brutal-black); }
-.block-white  { background: var(--brutal-white); }
-
 .brutal-input {
   width: 100%;
   padding: 13px 16px;
-  background: var(--brutal-white);
-  border: var(--brutal-border);
+  background: #14141E;
+  border: 2px solid #0A0A0F;
   font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--brutal-black);
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFFFF;
   outline: none;
-  transition: box-shadow var(--t-fast);
+  box-shadow: 2px 2px 0 #0A0A0F;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
-.brutal-input:focus { box-shadow: var(--brutal-shadow); }
-.brutal-input::placeholder { color: rgba(10,10,10,0.35); }
+.brutal-input:focus {
+  border-color: var(--neon-lime);
+  box-shadow: 0 0 0 2px rgba(204,255,0,0.35);
+}
+.brutal-input::placeholder {
+  color: rgba(255,255,255,0.4);
+}
 
 /* ============================================================
    GAME UI COMPONENTS  (Dashboard, Marketplace, Build…)
