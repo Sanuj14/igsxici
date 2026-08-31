@@ -59,11 +59,18 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     load()
+    const interval = setInterval(() => {
+      load()
+    }, 15000)
+
     const channel = supabase.channel('leaderboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'buildings' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, load)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => { 
+      clearInterval(interval)
+      supabase.removeChannel(channel) 
+    }
   }, [])
 
   const maxHeight = Math.max(...entries.map(e => e.building?.height || 0), 1)
@@ -72,10 +79,16 @@ export default function LeaderboardPage() {
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <div>
-          <h1 className="text-h2">🏆 LEADERBOARD</h1>
+          <h1 className="text-h2" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            🏆 LEADERBOARD 
+            <span style={{ fontSize: '12px', background: 'var(--status-safe)', color: 'black', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold' }}>LIVE</span>
+          </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Live rankings. Updates in real time.</p>
         </div>
-        <a href="/display" target="_blank" className="game-btn game-btn-ghost" id="open-display">📺 Display Mode</a>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={load} className="game-btn game-btn-primary">🔄 REFRESH</button>
+          <a href="/display" target="_blank" className="game-btn game-btn-ghost" id="open-display">📺 Display Mode</a>
+        </div>
       </div>
 
       {loading ? (

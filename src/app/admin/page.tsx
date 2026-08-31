@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import type { Team, Building, Challenge, Event, City } from '@/lib/supabase/types'
-import { resetGame, removeTeam, triggerTargetedEvent, createGame, deleteGame } from '@/app/actions/admin'
+import { resetGame, removeTeam, triggerTargetedEvent, createGame, deleteGame, expireEvent as expireEventAction, createChallenge as createChallengeAction } from '@/app/actions/admin'
 import styles from './page.module.css'
 
 interface TeamFull extends Team {
@@ -40,8 +40,9 @@ export default function AdminPage() {
   const [eDuration, setEDuration] = useState(5)
   const [eFundChange, setEFundChange] = useState(0)
   const [eStabilityChange, setEStabilityChange] = useState(0)
-  const [eResourceSlug, setEResourceSlug] = useState('')
-  const [eResourceChange, setEResourceChange] = useState(0)
+  const [ePriceEffects, setEPriceEffects] = useState<Record<string,number>>({
+    cement: 1.0, steel: 1.0, glass: 1.0, timber: 1.0, aluminium: 1.0, copper: 1.0, labour: 1.0
+  })
 
   // Game form
   const [gTitle, setGTitle] = useState('')
@@ -119,11 +120,17 @@ export default function AdminPage() {
   }
 
   async function triggerEvent() {
-    const effectsData = {
+    const effectsData: any = {
       fund_change: eFundChange,
       stability_change: eStabilityChange,
-      resource_slug: eResourceSlug,
-      resource_change: eResourceChange
+    }
+    
+    const finalPriceEffects: Record<string, number> = {}
+    for (const [slug, val] of Object.entries(ePriceEffects)) {
+      if (val !== 1.0) finalPriceEffects[slug] = val
+    }
+    if (Object.keys(finalPriceEffects).length > 0) {
+      effectsData.price_effects = finalPriceEffects
     }
     
     const res = await triggerTargetedEvent({
@@ -134,7 +141,8 @@ export default function AdminPage() {
     if (!res.success) alert(res.error)
     else { 
       setETitle(''); setEDesc(''); 
-      setEFundChange(0); setEStabilityChange(0); setEResourceSlug(''); setEResourceChange(0);
+      setEFundChange(0); setEStabilityChange(0);
+      setEPriceEffects({cement: 1.0, steel: 1.0, glass: 1.0, timber: 1.0, aluminium: 1.0, copper: 1.0, labour: 1.0})
       loadAll() 
     }
   }
@@ -150,19 +158,18 @@ export default function AdminPage() {
   }
 
   async function expireEvent(id: string) {
-    await supabase.from('events').update({ status: 'expired' }).eq('id', id)
+    await expireEventAction(id)
     loadAll()
   }
 
   async function createChallenge() {
-    const { error } = await supabase.from('challenges').insert({
+    const res = await createChallengeAction({
       title: cTitle, description: cDesc,
-      challenge_type: cType as any,
+      challenge_type: cType,
       reward_funds: cReward, penalty_funds: cPenalty,
       max_slots: cSlots, duration_minutes: cDuration,
-      status: 'upcoming'
     })
-    if (error) alert(error.message)
+    if (!res.success) alert(res.error)
     else { setCTitle(''); setCDesc(''); loadAll() }
   }
 
@@ -405,22 +412,22 @@ export default function AdminPage() {
                   <label className={styles.fLabel}>STABILITY CHANGE</label>
                   <input type="number" value={eStabilityChange} onChange={e=>setEStabilityChange(+e.target.value)} className="game-input" placeholder="e.g. -10" />
                 </div>
-                <div className={styles.formRow}>
-                  <label className={styles.fLabel}>TARGET RESOURCE</label>
-                  <select value={eResourceSlug} onChange={e=>setEResourceSlug(e.target.value)} className="game-input">
-                    <option value="">None</option>
-                    <option value="cement">Cement</option>
-                    <option value="steel">Steel</option>
-                    <option value="glass">Glass</option>
-                    <option value="timber">Timber</option>
-                    <option value="aluminium">Aluminium</option>
-                    <option value="copper">Copper</option>
-                    <option value="labour">Labour</option>
-                  </select>
-                </div>
-                <div className={styles.formRow}>
-                  <label className={styles.fLabel}>RESOURCE CHANGE</label>
-                  <input type="number" value={eResourceChange} onChange={e=>setEResourceChange(+e.target.value)} className="game-input" placeholder="e.g. -5" disabled={!eResourceSlug} />
+                <div className={styles.formRow} style={{gridColumn: '1 / -1'}}>
+                  <label className={styles.fLabel}>MARKET PRICE MULTIPLIERS</label>
+                  <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                    {['cement','steel','glass','timber','aluminium','copper','labour'].map(slug => (
+                      <div key={slug} style={{display:'flex', flexDirection:'column', gap:'4px'}}>
+                        <span style={{fontSize:'10px', textTransform:'uppercase'}}>{slug} x</span>
+                        <input 
+                          type="number" step="0.1"
+                          value={ePriceEffects[slug] || 1.0}
+                          onChange={e => setEPriceEffects({...ePriceEffects, [slug]: +e.target.value})}
+                          className="game-input"
+                          style={{width:'80px', padding:'4px 8px'}}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               <button id="trigger-event" className="game-btn game-btn-danger" onClick={triggerEvent} disabled={!eTitle}>
@@ -497,6 +504,7 @@ export default function AdminPage() {
                     <option value="physical">Physical</option>
                     <option value="venue_mission">Venue Mission</option>
                     <option value="risk">Risk / High-Stakes</option>
+                    <option value="quiz">Quiz</option>
                   </select>
                 </div>
                 <div className={styles.formRow}><label className={styles.fLabel}>REWARD ₹</label><input id="ch-reward" type="number" value={cReward} onChange={e=>setCReward(+e.target.value)} className="game-input" /></div>

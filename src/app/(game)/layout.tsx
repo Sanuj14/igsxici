@@ -23,6 +23,14 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
   const [joinError, setJoinError] = useState('')
   const [joining, setJoining] = useState(false)
 
+  // No Active Game State
+  const [noActiveGame, setNoActiveGame] = useState(false)
+  const [pastGames, setPastGames] = useState<any[]>([])
+
+  // Alert Overlays
+  const [eventAlert, setEventAlert] = useState<any | null>(null)
+  const [challengeAlert, setChallengeAlert] = useState<any | null>(null)
+
   useEffect(() => {
     const unread = notifications.filter(n => !n.read).length
     setUnreadCount(unread)
@@ -37,7 +45,7 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
         .from('user_profiles')
         .select('role, team_id')
         .eq('id', user.id)
-        .single()
+        .single() as any
 
       if (!profile) { router.push('/login'); return }
       if (profile.role === 'admin') { router.push('/admin'); return }
@@ -63,10 +71,15 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
       const { data: gameData } = await supabase.from('games').select('*').eq('status', 'active').single()
       if (gameData) {
         setActiveGame(gameData)
+        setNoActiveGame(false)
         const { data: teamGame } = await supabase.from('team_games').select('*').eq('team_id', profile.team_id).eq('game_id', gameData.id).single()
         if (teamGame) {
           setHasJoined(true)
         }
+      } else {
+        setNoActiveGame(true)
+        const { data: past } = await supabase.from('games').select('title, created_at').eq('status', 'finished').order('created_at', { ascending: false }).limit(5)
+        if (past) setPastGames(past)
       }
 
       setCheckingAuth(false)
@@ -81,6 +94,19 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
           payload => { if (payload.new) { const p = payload.new as any; updateMarketPrice(p.resource_id, p.current_price, p.stock) } })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `team_id=eq.${profile.team_id}` },
           payload => { if (payload.new) addNotification(payload.new as any) })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' },
+          payload => {
+            if (payload.new) {
+              setEventAlert(payload.new)
+              setTimeout(() => setEventAlert(null), 6000)
+            }
+          })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'challenges' },
+          payload => {
+            if (payload.new) {
+              setChallengeAlert(payload.new)
+            }
+          })
         .subscribe()
 
       return () => { supabase.removeChannel(channel) }
@@ -131,8 +157,86 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className={styles.gameLayout}>
+      {/* Event Alert Overlay */}
+      {eventAlert !== null && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.9)', zIndex: 9998, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)'
+        }}>
+          <div className="game-card" style={{ maxWidth: '500px', width: '100%', textAlign: 'center', padding: '40px', position: 'relative' }}>
+            <button onClick={() => setEventAlert(null)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: 'white', fontSize: '20px', cursor: 'pointer' }}>×</button>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>
+              {eventAlert.type === 'disaster' ? '🚨' : eventAlert.type === 'bonus' ? '✅' : '📊'}
+            </div>
+            <h2 style={{ fontSize: '32px', color: 'var(--hot-pink)', textTransform: 'uppercase', marginBottom: '16px' }}>{eventAlert.title}</h2>
+            <p style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>{eventAlert.description}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Challenge Alert Overlay */}
+      {challengeAlert !== null && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.9)', zIndex: 9998, display: 'flex',
+          alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="game-card" style={{ maxWidth: '500px', width: '100%', textAlign: 'center', padding: '40px' }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚡</div>
+            <h2 style={{ fontSize: '32px', color: 'var(--neon-lime)', textTransform: 'uppercase', marginBottom: '16px' }}>NEW CHALLENGE: {challengeAlert.title}</h2>
+            <p style={{ fontSize: '18px', color: 'var(--text-secondary)', marginBottom: '30px' }}>{challengeAlert.description}</p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={() => setChallengeAlert(null)} className="game-btn game-btn-ghost">DISMISS</button>
+              <button onClick={() => { setChallengeAlert(null); router.push('/challenges') }} className="game-btn game-btn-primary">JOIN CHALLENGE →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Active Game Lobby */}
+      {noActiveGame && !hasJoined && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'var(--bg-dark)', zIndex: 9999, display: 'flex',
+          flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+        }}>
+          {team && (
+            <div style={{ position: 'absolute', top: 20, left: 20, display: 'flex', gap: 20, alignItems: 'center' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '20px' }}>{team.name}</div>
+              <div style={{ color: 'var(--yellow)' }}>₹{team.funds.toLocaleString('en-IN')}</div>
+            </div>
+          )}
+          <div className="game-card" style={{ maxWidth: '500px', width: '100%', textAlign: 'center', padding: '40px' }}>
+            <span style={{ fontSize: '64px', marginBottom: '16px', display: 'block' }}>🏗️</span>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, color: 'white', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+              WAITING FOR ROUND TO START
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '16px' }}>
+              The admin hasn't started a game yet. Hang tight!
+            </p>
+            
+            {pastGames.length > 0 && (
+              <div style={{ textAlign: 'left', marginBottom: '32px', background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '8px' }}>
+                <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase' }}>Past Games</h3>
+                {pastGames.map((pg, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                    <span style={{ color: 'white' }}>{pg.title}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{new Date(pg.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => window.location.reload()} className="game-btn game-btn-primary" style={{ justifyContent: 'center', width: '100%' }}>
+              REFRESH STATUS
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Game Lock Overlay */}
-      {activeGame && !hasJoined && (
+      {activeGame && !hasJoined && !noActiveGame && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
           background: 'rgba(10,10,10,0.95)', zIndex: 9999, display: 'flex',

@@ -4,18 +4,17 @@ import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/lib/supabase/types'
 
 // Admin client — bypasses RLS
-const supabaseAdmin = createClient<Database>(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { autoRefreshToken: false, persistSession: false } }
-)
+) as any
 
 export async function resetGame() {
-  // Truncate teams table (cascades to buildings, inventory, etc)
   const { error } = await supabaseAdmin
     .from('teams')
     .delete()
-    .neq('id', '00000000-0000-0000-0000-000000000000') // Deletes all
+    .neq('id', '00000000-0000-0000-0000-000000000000')
 
   if (error) return { success: false, error: error.message }
   return { success: true }
@@ -37,6 +36,55 @@ export async function updateAccessCode(code: string) {
     .upsert({ key: 'access_code', value: `"${code}"`, updated_at: new Date().toISOString() })
 
   if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+async function applyMarketPriceEffects(priceEffects: Record<string, number>) {
+  for (const [slug, multiplier] of Object.entries(priceEffects)) {
+    const { data: res } = await supabaseAdmin.from('resources').select('id').eq('slug', slug).single()
+    if (res) {
+      const { data: marketPrice } = await supabaseAdmin.from('market_prices').select('current_price').eq('resource_id', res.id).single()
+      if (marketPrice) {
+        const newPrice = Number(marketPrice.current_price) * multiplier
+        await supabaseAdmin.from('market_prices').update({ current_price: newPrice }).eq('resource_id', res.id)
+      }
+    }
+  }
+}
+
+async function restoreMarketPrices(priceEffects: Record<string, number>) {
+  for (const [slug, multiplier] of Object.entries(priceEffects)) {
+    const { data: res } = await supabaseAdmin.from('resources').select('id').eq('slug', slug).single()
+    if (res) {
+      const { data: marketPrice } = await supabaseAdmin.from('market_prices').select('current_price').eq('resource_id', res.id).single()
+      if (marketPrice) {
+        const newPrice = Number(marketPrice.current_price) / multiplier
+        await supabaseAdmin.from('market_prices').update({ current_price: newPrice }).eq('resource_id', res.id)
+      }
+    }
+  }
+}
+
+export async function expireEvent(eventId: string) {
+  const { data: event, error: fetchError } = await supabaseAdmin
+    .from('events')
+    .select('effects')
+    .eq('id', eventId)
+    .single()
+
+  if (fetchError || !event) return { success: false, error: fetchError?.message || 'Event not found' }
+
+  const effects = event.effects as any
+  if (effects?.price_effects) {
+    await restoreMarketPrices(effects.price_effects)
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from('events')
+    .update({ status: 'expired' })
+    .eq('id', eventId)
+
+  if (updateError) return { success: false, error: updateError.message }
   return { success: true }
 }
 
@@ -62,7 +110,12 @@ export async function triggerTargetedEvent(eventData: any, effectsData: any) {
 
   if (eventError) return { success: false, error: eventError.message }
 
-  // 2. Apply effects immediately
+  // 2. Apply market price effects if any
+  if (effectsData.price_effects) {
+    await applyMarketPriceEffects(effectsData.price_effects)
+  }
+
+  // 3. Apply targeted effects
   let query = supabaseAdmin.from('teams').select('id, funds, city_id')
   
   if (scope === 'city' && city_id) {
@@ -75,7 +128,6 @@ export async function triggerTargetedEvent(eventData: any, effectsData: any) {
 
   if (targetTeams && targetTeams.length > 0) {
     for (const team of targetTeams) {
-      // Apply funds adjustment
       if (effectsData.fund_change) {
         await supabaseAdmin
           .from('teams')
@@ -83,7 +135,6 @@ export async function triggerTargetedEvent(eventData: any, effectsData: any) {
           .eq('id', team.id)
       }
       
-      // Apply stability adjustment
       if (effectsData.stability_change) {
         const { data: bld } = await supabaseAdmin.from('buildings').select('id, structural_stability').eq('team_id', team.id).single()
         if (bld) {
@@ -92,7 +143,6 @@ export async function triggerTargetedEvent(eventData: any, effectsData: any) {
         }
       }
 
-      // Apply resource deduction
       if (effectsData.resource_slug && effectsData.resource_change) {
         const { data: res } = await supabaseAdmin.from('resources').select('id').eq('slug', effectsData.resource_slug).single()
         if (res) {
@@ -110,17 +160,14 @@ export async function triggerTargetedEvent(eventData: any, effectsData: any) {
 }
 
 export async function createGame(title: string) {
-  // Generate random 6 char alphanumeric code
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let accessCode = ''
   for (let i = 0; i < 6; i++) {
     accessCode += chars.charAt(Math.floor(Math.random() * chars.length))
   }
 
-  // Mark all existing games as finished
   await supabaseAdmin.from('games').update({ status: 'finished' }).eq('status', 'active')
 
-  // Create new game
   const { data, error } = await supabaseAdmin
     .from('games')
     .insert({ title, access_code: accessCode, status: 'active' })
@@ -132,7 +179,6 @@ export async function createGame(title: string) {
 }
 
 export async function joinGame(accessCode: string, teamId: string) {
-  // Check active game
   const { data: game, error: gameError } = await supabaseAdmin
     .from('games')
     .select('id, access_code')
@@ -147,14 +193,13 @@ export async function joinGame(accessCode: string, teamId: string) {
     return { success: false, error: 'Invalid access code.' }
   }
 
-  // Add to team_games
   const { error } = await supabaseAdmin
     .from('team_games')
     .insert({ team_id: teamId, game_id: game.id })
 
   if (error) {
-    if (error.code === '23505') { // unique violation
-      return { success: true } // Already joined
+    if (error.code === '23505') {
+      return { success: true }
     }
     return { success: false, error: error.message }
   }
@@ -168,6 +213,24 @@ export async function deleteGame(gameId: string) {
     .delete()
     .eq('id', gameId)
 
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function createChallenge(data: any) {
+  const { error } = await supabaseAdmin
+    .from('challenges')
+    .insert({
+      title: data.title,
+      description: data.description,
+      challenge_type: data.challenge_type,
+      reward_funds: data.reward_funds,
+      penalty_funds: data.penalty_funds,
+      max_slots: data.max_slots,
+      status: 'active',
+      end_at: new Date(Date.now() + data.duration_minutes * 60000).toISOString()
+    })
+  
   if (error) return { success: false, error: error.message }
   return { success: true }
 }
