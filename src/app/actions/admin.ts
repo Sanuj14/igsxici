@@ -274,3 +274,144 @@ export async function createChallenge(data: any) {
   if (error) return { success: false, error: error.message }
   return { success: true }
 }
+
+export async function adjustTeamFunds(teamId: string, amount: number) {
+  if (!teamId || amount === 0) return { success: false, error: 'Invalid team or amount' }
+  const { data: team, error: fetchErr } = await supabaseAdmin
+    .from('teams')
+    .select('id, name, funds')
+    .eq('id', teamId)
+    .single()
+
+  if (fetchErr || !team) return { success: false, error: fetchErr?.message || 'Team not found' }
+
+  const newFunds = team.funds + amount
+  const { error: updateErr } = await supabaseAdmin
+    .from('teams')
+    .update({ funds: newFunds })
+    .eq('id', teamId)
+
+  if (updateErr) return { success: false, error: updateErr.message }
+
+  // Log transaction
+  await supabaseAdmin.from('transactions').insert({
+    team_id: teamId,
+    type: 'admin_adjustment',
+    amount: amount,
+    metadata: { reason: 'Admin manual adjustment', previous_funds: team.funds, new_funds: newFunds }
+  })
+
+  // Notify team
+  await supabaseAdmin.from('notifications').insert({
+    team_id: teamId,
+    title: '💰 Funds Adjusted by Admin',
+    message: `Your balance was adjusted by ${amount >= 0 ? '+' : ''}₹${amount.toLocaleString('en-IN')}. Current balance: ₹${newFunds.toLocaleString('en-IN')}.`,
+    notif_type: amount >= 0 ? 'success' : 'warning'
+  })
+
+  return { success: true, newFunds }
+}
+
+export async function updateMarketPrice(resourceId: string, price: number) {
+  const { error } = await supabaseAdmin
+    .from('market_prices')
+    .update({ current_price: Math.max(0, price), updated_at: new Date().toISOString() })
+    .eq('resource_id', resourceId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function updateMarketStock(resourceId: string, stock: number) {
+  const { error } = await supabaseAdmin
+    .from('market_prices')
+    .update({ stock: Math.max(0, stock), updated_at: new Date().toISOString() })
+    .eq('resource_id', resourceId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function activateChallenge(challengeId: string) {
+  const { data: ch } = await supabaseAdmin
+    .from('challenges')
+    .select('duration_minutes')
+    .eq('id', challengeId)
+    .single()
+
+  const duration = ch?.duration_minutes || 5
+  const expiresAt = new Date(Date.now() + duration * 60000).toISOString()
+
+  const { error } = await supabaseAdmin
+    .from('challenges')
+    .update({ status: 'active', expires_at: expiresAt })
+    .eq('id', challengeId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function closeChallenge(challengeId: string) {
+  const { error } = await supabaseAdmin
+    .from('challenges')
+    .update({ status: 'closed' })
+    .eq('id', challengeId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function approveChallenge(participantId: string, teamId: string, challengeId: string, success: boolean) {
+  const { data: ch } = await supabaseAdmin
+    .from('challenges')
+    .select('title, reward_funds, penalty_funds')
+    .eq('id', challengeId)
+    .single()
+
+  const { error: partErr } = await supabaseAdmin
+    .from('challenge_participants')
+    .update({
+      status: success ? 'success' : 'failed',
+      completed_at: new Date().toISOString()
+    })
+    .eq('id', participantId)
+
+  if (partErr) return { success: false, error: partErr.message }
+
+  if (ch) {
+    const { data: team } = await supabaseAdmin
+      .from('teams')
+      .select('funds, name')
+      .eq('id', teamId)
+      .single()
+
+    if (team) {
+      const fundChange = success ? (ch.reward_funds || 0) : -(ch.penalty_funds || 0)
+      if (fundChange !== 0) {
+        await supabaseAdmin
+          .from('teams')
+          .update({ funds: team.funds + fundChange })
+          .eq('id', teamId)
+
+        await supabaseAdmin.from('transactions').insert({
+          team_id: teamId,
+          type: success ? 'challenge_reward' : 'challenge_penalty',
+          amount: fundChange,
+          metadata: { challenge_id: challengeId, challenge_title: ch.title }
+        })
+
+        await supabaseAdmin.from('notifications').insert({
+          team_id: teamId,
+          title: success ? '🏆 Challenge Reward Awarded!' : '⚠️ Challenge Penalty Incurred',
+          message: success 
+            ? `Your team won the "${ch.title}" challenge! +₹${ch.reward_funds.toLocaleString('en-IN')} deposited.`
+            : `Challenge "${ch.title}" failed. -₹${ch.penalty_funds.toLocaleString('en-IN')} deducted.`,
+          notif_type: success ? 'success' : 'warning'
+        })
+      }
+    }
+  }
+
+  return { success: true }
+}
+

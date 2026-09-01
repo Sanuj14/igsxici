@@ -5,8 +5,10 @@ import { useGameStore } from '@/store/gameStore'
 import type { Trade, Team } from '@/lib/supabase/types'
 import styles from './page.module.css'
 
+import { respondTradeAction } from '@/app/actions/trade'
+
 export default function TradePage() {
-  const { teamId, resources, inventory } = useGameStore()
+  const { teamId, team, resources, inventory, loadTeamData } = useGameStore()
   const [trades, setTrades] = useState<(Trade & { from_team: Team; to_team: Team })[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -42,6 +44,25 @@ export default function TradePage() {
   async function sendTrade(e: React.FormEvent) {
     e.preventDefault()
     if (!teamId || !toTeamId) return
+
+    // Validation: Check funds
+    if (offerFunds > (team?.funds || 0)) {
+      setResult(`❌ Cannot offer ₹${offerFunds.toLocaleString('en-IN')}. You only have ₹${(team?.funds || 0).toLocaleString('en-IN')}.`)
+      return
+    }
+
+    // Validation: Check resources
+    for (const [slug, qty] of Object.entries(offerRes)) {
+      if (qty > 0) {
+        const res = resources.find(r => r.slug === slug)
+        const inv = inventory.find(i => i.resource_id === res?.id)?.quantity || 0
+        if (qty > inv) {
+          setResult(`❌ Cannot offer ${qty} units of ${res?.name || slug}. You only have ${inv}.`)
+          return
+        }
+      }
+    }
+
     setLoading(true)
     const { error } = await supabase.from('trades').insert({
       from_team_id: teamId,
@@ -52,7 +73,9 @@ export default function TradePage() {
       request_resources: requestRes,
       message,
     })
-    if (error) { setResult('Error: ' + error.message) } else {
+    if (error) { 
+      setResult('Error: ' + error.message) 
+    } else {
       setResult('✅ Trade offer sent!')
       setShowForm(false)
       loadTrades()
@@ -61,19 +84,24 @@ export default function TradePage() {
   }
 
   async function respondTrade(tradeId: string, accept: boolean) {
-    if (!accept) {
-      await supabase.from('trades').update({ status: 'rejected' }).eq('id', tradeId)
-      loadTrades()
-      return
+    if (!teamId) return
+    setLoading(true)
+    try {
+      const res = await respondTradeAction(tradeId, teamId, accept)
+      if (!res.success) {
+        alert(res.error)
+      } else {
+        setResult(accept ? '✅ Trade accepted! Funds and materials transferred.' : 'Trade declined.')
+        await Promise.all([
+          loadTrades(),
+          loadTeamData(teamId)
+        ])
+      }
+    } catch (err: any) {
+      alert('Trade error: ' + err.message)
+    } finally {
+      setLoading(false)
     }
-    // For accept: simple DB update (ideally via RPC for atomicity)
-    const trade = trades.find(t => t.id === tradeId)
-    if (!trade) return
-    // Atomic acceptance via custom logic
-    const { error } = await supabase.from('trades').update({ status: 'accepted' }).eq('id', tradeId)
-    if (error) { alert('Error: ' + error.message); return }
-    // Note: In production, this should be an atomic RPC function
-    loadTrades()
   }
 
   const incoming = trades.filter(t => t.to_team_id === teamId && t.status === 'pending')

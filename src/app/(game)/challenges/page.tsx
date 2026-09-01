@@ -1,8 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
+import { claimChallengeSlotAction } from '@/app/actions/challenges'
 import styles from './page.module.css'
 
 const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -15,26 +17,55 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }
 }
 
 export default function ChallengesPage() {
+  const router = useRouter()
   const { challenges, teamId, loadChallenges } = useGameStore()
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [messages, setMessages] = useState<Record<string, { text: string; ok: boolean }>>({})
+  const [claimedMap, setClaimedMap] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    async function loadClaimed() {
+      if (!teamId) return
+      const { data } = await supabase
+        .from('challenge_participants')
+        .select('challenge_id')
+        .eq('team_id', teamId)
+      if (data) {
+        const map: Record<string, boolean> = {}
+        data.forEach((p: any) => { map[p.challenge_id] = true })
+        setClaimedMap(map)
+      }
+    }
+    loadClaimed()
+  }, [teamId, challenges])
 
   async function claimSlot(challengeId: string) {
     if (!teamId) return
     setLoading(p => ({ ...p, [challengeId]: true }))
     try {
-      const { data, error } = await supabase.rpc('claim_challenge_slot', {
-        p_team_id: teamId,
-        p_challenge_id: challengeId
-      })
-      if (error) throw error
-      const res = data as { success: boolean; error?: string }
+      const res = await claimChallengeSlotAction(teamId, challengeId)
       if (!res.success) throw new Error(res.error)
+      setClaimedMap(p => ({ ...p, [challengeId]: true }))
       setMessages(p => ({ ...p, [challengeId]: { text: '✅ Slot claimed! Complete the challenge to earn your reward.', ok: true } }))
       await loadChallenges()
     } catch (e: any) {
       setMessages(p => ({ ...p, [challengeId]: { text: e.message, ok: false } }))
     } finally {
+      setLoading(p => ({ ...p, [challengeId]: false }))
+    }
+  }
+
+  async function handleClaimAndQuiz(challengeId: string) {
+    if (!teamId) return
+    setLoading(p => ({ ...p, [challengeId]: true }))
+    try {
+      const res = await claimChallengeSlotAction(teamId, challengeId)
+      if (!res.success) throw new Error(res.error)
+      setClaimedMap(p => ({ ...p, [challengeId]: true }))
+      await loadChallenges()
+      router.push(`/challenges/quiz?challengeId=${challengeId}`)
+    } catch (e: any) {
+      setMessages(p => ({ ...p, [challengeId]: { text: e.message, ok: false } }))
       setLoading(p => ({ ...p, [challengeId]: false }))
     }
   }
@@ -69,8 +100,10 @@ export default function ChallengesPage() {
           <div className={styles.challengeGrid}>
             {active.map(challenge => {
               const cfg = TYPE_CONFIG[challenge.challenge_type] || TYPE_CONFIG.intellectual
-              const slotsLeft = challenge.max_slots - challenge.claimed_slots
+              const slotsLeft = Math.max(0, challenge.max_slots - challenge.claimed_slots)
               const msg = messages[challenge.id]
+              const hasClaimed = claimedMap[challenge.id]
+
               return (
                 <div key={challenge.id} className={`${styles.challengeCard} game-card game-card-glow-pink`}>
                   <div className={styles.challengeTop}>
@@ -104,28 +137,43 @@ export default function ChallengesPage() {
                   <div>
                     <div className={`progress-bar`}>
                       <div className={`progress-bar-fill ${slotsLeft === 0 ? 'progress-red' : 'progress-green'}`}
-                        style={{ width: `${(challenge.claimed_slots / challenge.max_slots) * 100}%` }} />
+                        style={{ width: `${Math.min(100, (challenge.claimed_slots / challenge.max_slots) * 100)}%` }} />
                     </div>
                   </div>
                   {msg?.text && (
                     <div className={`${styles.msg} ${msg.ok ? styles.msgOk : styles.msgErr}`}>{msg.text}</div>
                   )}
                   {challenge.challenge_type === 'quiz' ? (
-                    <Link
-                      href={`/challenges/quiz?challengeId=${challenge.id}`}
-                      className={`game-btn game-btn-lime ${styles.claimBtn}`}
-                      style={{ textAlign: 'center', justifyContent: 'center' }}
-                    >
-                      📝 ENTER CIVIL QUIZ →
-                    </Link>
+                    hasClaimed ? (
+                      <Link
+                        href={`/challenges/quiz?challengeId=${challenge.id}`}
+                        className={`game-btn game-btn-lime ${styles.claimBtn}`}
+                        style={{ textAlign: 'center', justifyContent: 'center' }}
+                      >
+                        📝 ENTER / CONTINUE QUIZ →
+                      </Link>
+                    ) : slotsLeft > 0 ? (
+                      <button
+                        className={`game-btn game-btn-lime ${styles.claimBtn}`}
+                        style={{ textAlign: 'center', justifyContent: 'center' }}
+                        onClick={() => handleClaimAndQuiz(challenge.id)}
+                        disabled={loading[challenge.id]}
+                      >
+                        {loading[challenge.id] ? 'Entering...' : `📝 CLAIM SPOT & START QUIZ (${slotsLeft} left)`}
+                      </button>
+                    ) : (
+                      <button className={`game-btn game-btn-ghost ${styles.claimBtn}`} disabled>
+                        🔒 All Spots Claimed
+                      </button>
+                    )
                   ) : (
                     <button
                       id={`claim-${challenge.id.slice(0, 8)}`}
-                      className={`game-btn ${slotsLeft === 0 ? 'game-btn-ghost' : 'game-btn-primary'} ${styles.claimBtn}`}
+                      className={`game-btn ${slotsLeft === 0 && !hasClaimed ? 'game-btn-ghost' : 'game-btn-primary'} ${styles.claimBtn}`}
                       onClick={() => claimSlot(challenge.id)}
-                      disabled={loading[challenge.id] || slotsLeft === 0 || msg?.ok}
+                      disabled={loading[challenge.id] || (slotsLeft === 0 && !hasClaimed) || hasClaimed}
                     >
-                      {loading[challenge.id] ? 'Claiming...' : slotsLeft === 0 ? '🔒 All Slots Taken' : msg?.ok ? '✅ Claimed' : `CLAIM SLOT (${slotsLeft} left)`}
+                      {loading[challenge.id] ? 'Claiming...' : hasClaimed ? '✅ Slot Claimed' : slotsLeft === 0 ? '🔒 All Slots Taken' : `CLAIM SLOT (${slotsLeft} left)`}
                     </button>
                   )}
                 </div>

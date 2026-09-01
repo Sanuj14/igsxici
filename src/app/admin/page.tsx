@@ -3,7 +3,22 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import type { Team, Building, Challenge, Event, City } from '@/lib/supabase/types'
-import { resetGame, removeTeam, triggerTargetedEvent, createGame, deleteGame, deleteChallenge as deleteChallengeAction, expireEvent as expireEventAction, createChallenge as createChallengeAction } from '@/app/actions/admin'
+import { 
+  resetGame, 
+  removeTeam, 
+  triggerTargetedEvent, 
+  createGame, 
+  deleteGame, 
+  deleteChallenge as deleteChallengeAction, 
+  expireEvent as expireEventAction, 
+  createChallenge as createChallengeAction,
+  adjustTeamFunds,
+  updateMarketPrice as updateMarketPriceAction,
+  updateMarketStock as updateMarketStockAction,
+  activateChallenge as activateChallengeAction,
+  closeChallenge as closeChallengeAction,
+  approveChallenge as approveChallengeAction
+} from '@/app/actions/admin'
 import styles from './page.module.css'
 
 interface TeamFull extends Team {
@@ -29,6 +44,9 @@ export default function AdminPage() {
   const [games, setGames] = useState<any[]>([])
   const [tab, setTab] = useState<'teams'|'events'|'market'|'challenges'|'games'|'config'|'logs'>('teams')
   const [loading, setLoading] = useState(true)
+  const [participants, setParticipants] = useState<any[]>([])
+  const [quizResponses, setQuizResponses] = useState<any[]>([])
+  const [marketFeedback, setMarketFeedback] = useState<Record<string, string>>({})
 
   // Event form state
   const [eTitle, setETitle] = useState('')
@@ -63,6 +81,7 @@ export default function AdminPage() {
   // Funds adjustment
   const [adjTeamId, setAdjTeamId] = useState('')
   const [adjAmount, setAdjAmount] = useState(0)
+  const [adjStatus, setAdjStatus] = useState('')
 
   useEffect(() => {
     async function init() {
@@ -90,13 +109,15 @@ export default function AdminPage() {
     const ch = supabase.channel('admin-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, loadAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'buildings' }, loadAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'market_prices' }, loadAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'challenges' }, loadAll)
       
     ch.subscribe()
     return () => { supabase.removeChannel(ch) }
   }
 
   async function loadAll() {
-    const [teamsRes, buildingsRes, citiesRes, challengesRes, eventsRes, marketRes, gamesRes] = await Promise.all([
+    const [teamsRes, buildingsRes, citiesRes, challengesRes, eventsRes, marketRes, gamesRes, partsRes, quizRes] = await Promise.all([
       supabase.from('teams').select('*, city:cities(id,name,color,slug,description,advantages,risks,starting_bonus,coordinates_x,coordinates_y,is_coastal,created_at)').order('score', { ascending: false }),
       supabase.from('buildings').select('*'),
       supabase.from('cities').select('*'),
@@ -104,6 +125,8 @@ export default function AdminPage() {
       supabase.from('events').select('*').order('created_at', { ascending: false }).limit(20),
       supabase.from('market_prices').select('*, resource:resources(*)'),
       supabase.from('games').select('*').order('created_at', { ascending: false }),
+      supabase.from('challenge_participants').select('*, team:teams(name)'),
+      (supabase as any).from('quiz_responses').select('*, team:teams(name)')
     ])
     const buildMap: Record<string, Building> = {}
     buildingsRes.data?.forEach((b: any) => { buildMap[b.team_id] = b })
@@ -118,6 +141,8 @@ export default function AdminPage() {
     setEvents(eventsRes.data || [])
     setMarketPrices(marketRes.data || [])
     setGames(gamesRes.data || [])
+    setParticipants(partsRes.data || [])
+    setQuizResponses(quizRes.data || [])
   }
 
   async function triggerEvent() {
@@ -175,45 +200,62 @@ export default function AdminPage() {
   }
 
   async function activateChallenge(id: string) {
-    await supabase.from('challenges').update({ status: 'active', expires_at: new Date(Date.now() + cDuration * 60000).toISOString() }).eq('id', id)
-    loadAll()
+    const res = await activateChallengeAction(id)
+    if (!res.success) alert(res.error)
+    else loadAll()
   }
 
   async function closeChallenge(id: string) {
-    await supabase.from('challenges').update({ status: 'closed' }).eq('id', id)
-    loadAll()
+    const res = await closeChallengeAction(id)
+    if (!res.success) alert(res.error)
+    else loadAll()
   }
 
   async function adjustFunds() {
     if (!adjTeamId || adjAmount === 0) return
-    const team = teams.find(t => t.id === adjTeamId)
-    if (!team) return
-    await supabase.from('teams').update({ funds: team.funds + adjAmount }).eq('id', adjTeamId)
-    await supabase.from('transactions').insert({ team_id: adjTeamId, type: 'admin_adjustment', amount: adjAmount, metadata: { reason: 'Admin manual adjustment' } })
-    loadAll()
+    setAdjStatus('Applying...')
+    const res = await adjustTeamFunds(adjTeamId, adjAmount)
+    if (!res.success) {
+      alert(`Adjustment error: ${res.error}`)
+      setAdjStatus('Failed')
+    } else {
+      setAdjStatus('✅ Applied!')
+      setAdjAmount(0)
+      await loadAll()
+      setTimeout(() => setAdjStatus(''), 3000)
+    }
   }
 
   async function updateMarketPrice(resourceId: string, price: number) {
-    await supabase.from('market_prices').update({ current_price: price, updated_at: new Date().toISOString() }).eq('resource_id', resourceId)
-    loadAll()
+    setMarketFeedback(prev => ({ ...prev, [`price-${resourceId}`]: 'Saving...' }))
+    const res = await updateMarketPriceAction(resourceId, price)
+    if (!res.success) {
+      alert(`Price update failed: ${res.error}`)
+      setMarketFeedback(prev => ({ ...prev, [`price-${resourceId}`]: 'Failed' }))
+    } else {
+      setMarketFeedback(prev => ({ ...prev, [`price-${resourceId}`]: '✅ Saved' }))
+      await loadAll()
+      setTimeout(() => setMarketFeedback(prev => ({ ...prev, [`price-${resourceId}`]: '' })), 2500)
+    }
   }
 
   async function updateMarketStock(resourceId: string, stock: number) {
-    await supabase.from('market_prices').update({ stock }).eq('resource_id', resourceId)
-    loadAll()
+    setMarketFeedback(prev => ({ ...prev, [`stock-${resourceId}`]: 'Saving...' }))
+    const res = await updateMarketStockAction(resourceId, stock)
+    if (!res.success) {
+      alert(`Stock update failed: ${res.error}`)
+      setMarketFeedback(prev => ({ ...prev, [`stock-${resourceId}`]: 'Failed' }))
+    } else {
+      setMarketFeedback(prev => ({ ...prev, [`stock-${resourceId}`]: '✅ Saved' }))
+      await loadAll()
+      setTimeout(() => setMarketFeedback(prev => ({ ...prev, [`stock-${resourceId}`]: '' })), 2500)
+    }
   }
 
   async function approveChallenge(participantId: string, teamId: string, challengeId: string, success: boolean) {
-    const ch = challenges.find(c => c.id === challengeId)
-    await supabase.from('challenge_participants').update({
-      status: success ? 'success' : 'failed',
-      completed_at: new Date().toISOString()
-    }).eq('id', participantId)
-    if (success && ch) {
-      const team = teams.find(t => t.id === teamId)
-      if (team) await supabase.from('teams').update({ funds: team.funds + ch.reward_funds }).eq('id', teamId)
-    }
-    loadAll()
+    const res = await approveChallengeAction(participantId, teamId, challengeId, success)
+    if (!res.success) alert(res.error)
+    else loadAll()
   }
 
   if (loading) return (
@@ -287,10 +329,13 @@ export default function AdminPage() {
               <div className={styles.adjRow}>
                 <select id="adj-team" value={adjTeamId} onChange={e=>setAdjTeamId(e.target.value)} className="game-input" style={{flex:1}}>
                   <option value="">Select team...</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Current: ₹{t.funds.toLocaleString('en-IN')})</option>)}
                 </select>
                 <input id="adj-amount" type="number" value={adjAmount} onChange={e=>setAdjAmount(+e.target.value)} className="game-input" placeholder="e.g. 10000 or -5000" style={{width:'160px'}} />
-                <button id="apply-adj" className="game-btn game-btn-primary" onClick={adjustFunds}>Apply</button>
+                <button id="apply-adj" className="game-btn game-btn-primary" onClick={adjustFunds} disabled={!adjTeamId || adjAmount === 0}>
+                  {adjStatus || 'Apply Funds'}
+                </button>
+                {adjStatus && <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--neon-lime)' }}>{adjStatus}</span>}
               </div>
             </div>
             <div className={styles.teamsGrid}>
@@ -465,24 +510,52 @@ export default function AdminPage() {
                     <span className={styles.mcName}>{mp.resource?.name}</span>
                   </div>
                   <div className={styles.mcRow}>
-                    <label className={styles.fLabel}>PRICE ₹</label>
-                    <input
-                      id={`price-${mp.resource?.slug}`}
-                      type="number" min={0}
-                      defaultValue={mp.current_price}
-                      className="game-input"
-                      onBlur={e => updateMarketPrice(mp.resource_id, +e.target.value)}
-                    />
+                    <label className={styles.fLabel}>
+                      PRICE ₹ {marketFeedback[`price-${mp.resource_id}`] && <span style={{ color: 'var(--neon-lime)' }}>{marketFeedback[`price-${mp.resource_id}`]}</span>}
+                    </label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <input
+                        id={`price-${mp.resource?.slug}`}
+                        type="number" min={0}
+                        defaultValue={mp.current_price}
+                        className="game-input"
+                        style={{ flex: 1 }}
+                        onKeyDown={e => { if (e.key === 'Enter') updateMarketPrice(mp.resource_id, +(e.target as HTMLInputElement).value) }}
+                      />
+                      <button 
+                        className="game-btn game-btn-primary game-btn-sm" 
+                        onClick={() => {
+                          const input = document.getElementById(`price-${mp.resource?.slug}`) as HTMLInputElement
+                          if (input) updateMarketPrice(mp.resource_id, +input.value)
+                        }}
+                      >
+                        Set
+                      </button>
+                    </div>
                   </div>
                   <div className={styles.mcRow}>
-                    <label className={styles.fLabel}>STOCK</label>
-                    <input
-                      id={`stock-${mp.resource?.slug}`}
-                      type="number" min={0}
-                      defaultValue={mp.stock}
-                      className="game-input"
-                      onBlur={e => updateMarketStock(mp.resource_id, +e.target.value)}
-                    />
+                    <label className={styles.fLabel}>
+                      STOCK {marketFeedback[`stock-${mp.resource_id}`] && <span style={{ color: 'var(--neon-lime)' }}>{marketFeedback[`stock-${mp.resource_id}`]}</span>}
+                    </label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <input
+                        id={`stock-${mp.resource?.slug}`}
+                        type="number" min={0}
+                        defaultValue={mp.stock}
+                        className="game-input"
+                        style={{ flex: 1 }}
+                        onKeyDown={e => { if (e.key === 'Enter') updateMarketStock(mp.resource_id, +(e.target as HTMLInputElement).value) }}
+                      />
+                      <button 
+                        className="game-btn game-btn-lime game-btn-sm" 
+                        onClick={() => {
+                          const input = document.getElementById(`stock-${mp.resource?.slug}`) as HTMLInputElement
+                          if (input) updateMarketStock(mp.resource_id, +input.value)
+                        }}
+                      >
+                        Set
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -520,32 +593,88 @@ export default function AdminPage() {
 
             <div className={styles.challengeList}>
               <h3 className={styles.subTitle}>ALL CHALLENGES</h3>
-              {challenges.map(ch => (
-                <div key={ch.id} className={`${styles.chRow} game-card`}>
-                  <div className={styles.chInfo}>
-                    <span className={styles.chTitle}>{ch.title}</span>
-                    <span className={`stat-pill ${ch.status === 'active' ? 'stat-pill-critical' : ch.status === 'closed' ? 'stat-pill-warning' : 'stat-pill-info'}`}>{ch.status}</span>
-                    <span style={{fontSize:'12px',color:'var(--text-muted)'}}>{ch.claimed_slots}/{ch.max_slots} slots • ₹{ch.reward_funds.toLocaleString('en-IN')}</span>
+              {challenges.map(ch => {
+                const chParticipants = participants.filter(p => p.challenge_id === ch.id)
+                const chQuiz = quizResponses.filter(q => q.challenge_id === ch.id)
+
+                return (
+                  <div key={ch.id} className={`${styles.chRow} game-card`} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <div className={styles.chInfo}>
+                        <span className={styles.chTitle}>{ch.title}</span>
+                        <span className={`stat-pill ${ch.status === 'active' ? 'stat-pill-critical' : ch.status === 'closed' ? 'stat-pill-warning' : 'stat-pill-info'}`}>{ch.status}</span>
+                        <span style={{fontSize:'12px',color:'var(--text-muted)'}}>
+                          {ch.challenge_type.toUpperCase()} • {ch.claimed_slots}/{ch.max_slots} slots • {ch.duration_minutes}m • ₹{ch.reward_funds.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className={styles.chActions} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {ch.status === 'upcoming' && <button id={`activate-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-primary game-btn-sm" onClick={() => activateChallenge(ch.id)}>Activate</button>}
+                        {ch.status === 'active' && <button id={`close-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-ghost game-btn-sm" onClick={() => closeChallenge(ch.id)}>Close</button>}
+                        <button 
+                          className="game-btn game-btn-ghost game-btn-sm" 
+                          style={{ color: 'var(--status-critical)', padding: '4px 8px' }}
+                          onClick={async () => {
+                            if (confirm(`Delete challenge "${ch.title}"?`)) {
+                              const res = await deleteChallengeAction(ch.id)
+                              if (!res.success) alert(res.error)
+                              else loadAll()
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Participants and live quiz scores */}
+                    {chParticipants.length > 0 && (
+                      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '8px', width: '100%' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                          PARTICIPANTS & RESPONSES ({chParticipants.length}/{ch.max_slots}):
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {chParticipants.map(part => {
+                            const qResp = chQuiz.find(q => q.team_id === part.team_id)
+                            return (
+                              <div key={part.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}>
+                                <div>
+                                  <strong>{part.team?.name || 'Team'}</strong>
+                                  {qResp && (
+                                    <span style={{ marginLeft: '8px', color: 'var(--neon-lime)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                                      Score: {qResp.score}/5 ({qResp.time_taken_secs}s)
+                                    </span>
+                                  )}
+                                  <span className={`stat-pill ${part.status === 'success' ? 'stat-pill-safe' : part.status === 'failed' ? 'stat-pill-critical' : 'stat-pill-info'}`} style={{ marginLeft: '8px', fontSize: '10px' }}>
+                                    {part.status.toUpperCase()}
+                                  </span>
+                                </div>
+                                {ch.status === 'active' && part.status === 'claimed' && (
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button 
+                                      className="game-btn game-btn-lime game-btn-sm" 
+                                      style={{ fontSize: '11px', padding: '2px 8px' }}
+                                      onClick={() => approveChallenge(part.id, part.team_id, ch.id, true)}
+                                    >
+                                      ✓ Award Winner (+₹{ch.reward_funds.toLocaleString('en-IN')})
+                                    </button>
+                                    <button 
+                                      className="game-btn game-btn-ghost game-btn-sm" 
+                                      style={{ fontSize: '11px', padding: '2px 8px', color: 'var(--status-critical)' }}
+                                      onClick={() => approveChallenge(part.id, part.team_id, ch.id, false)}
+                                    >
+                                      ✕ Fail
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className={styles.chActions} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {ch.status === 'upcoming' && <button id={`activate-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-primary game-btn-sm" onClick={() => activateChallenge(ch.id)}>Activate</button>}
-                    {ch.status === 'active' && <button id={`close-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-ghost game-btn-sm" onClick={() => closeChallenge(ch.id)}>Close</button>}
-                    <button 
-                      className="game-btn game-btn-ghost game-btn-sm" 
-                      style={{ color: 'var(--status-critical)', padding: '4px 8px' }}
-                      onClick={async () => {
-                        if (confirm(`Delete challenge "${ch.title}"?`)) {
-                          const res = await deleteChallengeAction(ch.id)
-                          if (!res.success) alert(res.error)
-                          else loadAll()
-                        }
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
