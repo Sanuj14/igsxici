@@ -1,15 +1,18 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
 import styles from './page.module.css'
 
 export default function MarketplacePage() {
-  const { marketPrices, inventory, team, teamId, loadMarket, loadTeamData } = useGameStore()
+  const { marketPrices, inventory, team, teamId, events, loadMarket, loadTeamData } = useGameStore()
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [mode, setMode] = useState<Record<string, 'buy' | 'sell'>>({})
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [messages, setMessages] = useState<Record<string, { text: string; ok: boolean }>>({})
+
+  const offlineEvent = events.find(e => e.status === 'active' && ((e.effects as any)?.marketplace_offline || (e.effects as any)?.bank_freeze))
 
   function getInvQty(resourceId: string) {
     return inventory.find(i => i.resource_id === resourceId)?.quantity || 0
@@ -19,7 +22,7 @@ export default function MarketplacePage() {
   function getMode(resourceId: string) { return mode[resourceId] || 'buy' }
 
   async function handleTransaction(resourceId: string) {
-    if (!teamId) return
+    if (!teamId || offlineEvent) return
     const qty = getQty(resourceId)
     const m = getMode(resourceId)
     setLoading(p => ({ ...p, [resourceId]: true }))
@@ -59,6 +62,33 @@ export default function MarketplacePage() {
           <span className={styles.fundsValue}>₹{(team?.funds || 0).toLocaleString('en-IN')}</span>
         </div>
       </div>
+
+      {offlineEvent && (
+        <div style={{
+          background: 'rgba(255, 45, 120, 0.12)',
+          border: '2px solid var(--hot-pink)',
+          borderRadius: '8px',
+          padding: '16px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          flexWrap: 'wrap'
+        }}>
+          <div>
+            <div style={{ color: 'var(--hot-pink)', fontWeight: 700, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🚨</span> MARKETPLACE OFFLINE: {offlineEvent.title.toUpperCase()}
+            </div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
+              {offlineEvent.description} {(offlineEvent.effects as any)?.effectSummary || 'Trading with other teams is still permitted.'}
+            </div>
+          </div>
+          <Link href="/trade" className="game-btn game-btn-lime">
+            GO TO TRADE FLOOR →
+          </Link>
+        </div>
+      )}
 
       <div className={styles.resourceGrid}>
         {marketPrices.map(mp => {

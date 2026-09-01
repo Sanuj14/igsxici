@@ -65,18 +65,151 @@ async function restoreMarketPrices(priceEffects: Record<string, number>) {
   }
 }
 
+export const EVENT_PRESETS = [
+  {
+    id: 'power-grid-failure',
+    title: 'Power Grid Failure',
+    icon: '⚡',
+    duration: 4,
+    type: 'disaster',
+    desc: 'A massive blackout plunges the entire region into darkness.',
+    effectSummary: 'Live marketplace offline for 4 mins; only team-to-team bartering permitted.',
+    effects: { marketplace_offline: true }
+  },
+  {
+    id: 'coastal-cyclone',
+    title: 'Coastal Cyclone',
+    icon: '🌊',
+    duration: 5,
+    type: 'disaster',
+    desc: 'High winds batter coastal cities (Mumbai, Chennai, Kolkata, Kochi, Visakhapatnam, Surat).',
+    effectSummary: 'Glass prices rise by 50%; construction paused for 5 mins in coastal cities.',
+    effects: { price_effects: { glass: 1.5 }, coastal_pause: true }
+  },
+  {
+    id: 'cement-cartel-monopoly',
+    title: 'Cement Cartel Monopoly',
+    icon: '🏗️',
+    duration: 5,
+    type: 'disaster',
+    desc: 'Cement suppliers collude to artificially inflate prices.',
+    effectSummary: 'Cement base price increases by ₹400 / unit (+50%).',
+    effects: { price_effects: { cement: 1.5 } }
+  },
+  {
+    id: 'central-bank-freeze',
+    title: 'Central Bank Freeze',
+    icon: '🏦',
+    duration: 5,
+    type: 'disaster',
+    desc: 'The bank halts transactions due to a suspected cyber attack.',
+    effectSummary: 'Virtual funds frozen for 5 mins; all construction must be funded via resource bartering.',
+    effects: { bank_freeze: true, marketplace_offline: true }
+  },
+  {
+    id: 'severe-earthquake',
+    title: 'Severe Earthquake',
+    icon: '🌋',
+    duration: 3,
+    type: 'disaster',
+    desc: 'A major seismic event shakes the foundation of all towers.',
+    effectSummary: 'Marketplace offline for 3 mins; tower stability damaged by 10 points.',
+    effects: { marketplace_offline: true, stability_change: -10 }
+  },
+  {
+    id: 'tech-boom-inflation',
+    title: 'Tech Boom Inflation',
+    icon: '📈',
+    duration: 5,
+    type: 'disaster',
+    desc: 'A surge in investors raises property values but limits materials.',
+    effectSummary: 'Glass and Steel prices increase by 25%.',
+    effects: { price_effects: { glass: 1.25, steel: 1.25 } }
+  },
+  {
+    id: 'zoning-law-changes',
+    title: 'Zoning Law Changes',
+    icon: '✈️',
+    duration: 7,
+    type: 'disaster',
+    desc: 'Sudden aviation height restrictions are temporarily enforced.',
+    effectSummary: 'No team can build above 150 meters for the next 7 minutes.',
+    effects: { max_height_cap: 150 }
+  },
+  {
+    id: 'flash-flood',
+    title: 'Flash Flood',
+    icon: '🌧️',
+    duration: 5,
+    type: 'disaster',
+    desc: 'Sudden heavy rains inundate city streets and worksites.',
+    effectSummary: '10% of unspent Cement inventory is washed away; Cement marketplace price spikes by 30%.',
+    effects: { price_effects: { cement: 1.3 }, inventory_pct_cut: { cement: 0.10 } }
+  },
+  {
+    id: 'supply-chain-sabotage',
+    title: 'Supply Chain Sabotage',
+    icon: '🚛',
+    duration: 3,
+    type: 'disaster',
+    desc: 'A rogue competitor disrupts the transport of raw materials.',
+    effectSummary: 'All pending marketplace purchases are offline / delayed for 3 minutes.',
+    effects: { marketplace_offline: true }
+  },
+  {
+    id: 'extreme-heatwave',
+    title: 'Extreme Heatwave',
+    icon: '☀️',
+    duration: 10,
+    type: 'disaster',
+    desc: 'Dangerous temperatures halt daytime manual labor.',
+    effectSummary: 'Labour costs double (2x) for 10 mins; Sustainability drops 5% for non-green buildings.',
+    effects: { price_effects: { labour: 2.0 }, heatwave_sustainability_drop: true }
+  },
+  {
+    id: 'global-steel-shortage',
+    title: 'Global Steel Shortage',
+    icon: '⚙️',
+    duration: 8,
+    type: 'disaster',
+    desc: 'International supply chain issues cause a massive steel deficit.',
+    effectSummary: 'Steel prices skyrocket by 70%; market steel stock emptied (barter only for 8 mins).',
+    effects: { price_effects: { steel: 1.7 }, steel_stock_zero: true }
+  },
+  {
+    id: 'site-accident',
+    title: 'Major Site Accident',
+    icon: '🚧',
+    duration: 3,
+    type: 'disaster',
+    desc: 'A severe structural failure halts worksite operations for mandatory inspections.',
+    effectSummary: 'All construction paused for 3 minutes; ₹5,000 regulatory safety penalty.',
+    effects: { construction_pause: true, fund_change: -5000 }
+  }
+]
+
 export async function expireEvent(eventId: string) {
   const { data: event, error: fetchError } = await supabaseAdmin
     .from('events')
-    .select('effects')
+    .select('*')
     .eq('id', eventId)
     .single()
 
   if (fetchError || !event) return { success: false, error: fetchError?.message || 'Event not found' }
 
   const effects = event.effects as any
+
+  // Restore price multipliers
   if (effects?.price_effects) {
     await restoreMarketPrices(effects.price_effects)
+  }
+
+  // Restore steel stock if emptied
+  if (effects?.steel_stock_zero) {
+    const { data: steelRes } = await supabaseAdmin.from('resources').select('id').eq('slug', 'steel').single()
+    if (steelRes) {
+      await supabaseAdmin.from('market_prices').update({ stock: 1000 }).eq('resource_id', steelRes.id)
+    }
   }
 
   const { error: updateError } = await supabaseAdmin
@@ -85,7 +218,135 @@ export async function expireEvent(eventId: string) {
     .eq('id', eventId)
 
   if (updateError) return { success: false, error: updateError.message }
+
+  // Broadcast recovery notification
+  const { data: allTeams } = await supabaseAdmin.from('teams').select('id')
+  if (allTeams && allTeams.length > 0) {
+    const notifs = allTeams.map((t: any) => ({
+      team_id: t.id,
+      title: '🟢 Event Concluded',
+      message: `The event "${event.title}" has ended. Market and construction operations are back to normal!`,
+      notif_type: 'info'
+    }))
+    await supabaseAdmin.from('notifications').insert(notifs)
+  }
+
   return { success: true }
+}
+
+export async function triggerPresetEvent(presetId: string) {
+  const preset = EVENT_PRESETS.find(p => p.id === presetId)
+  if (!preset) return { success: false, error: 'Preset not found' }
+
+  // Check if an event with this title is already active
+  const { data: activeExisting } = await supabaseAdmin
+    .from('events')
+    .select('id')
+    .eq('title', preset.title)
+    .eq('status', 'active')
+    .single()
+
+  if (activeExisting) {
+    return { success: false, error: `"${preset.title}" is already active!` }
+  }
+
+  const endAt = new Date(Date.now() + preset.duration * 60000).toISOString()
+
+  // 1. Insert Event
+  const { data: eventRecord, error: evErr } = await supabaseAdmin
+    .from('events')
+    .insert({
+      title: preset.title,
+      description: preset.desc,
+      event_type: preset.type,
+      scope: 'global',
+      effects: { ...preset.effects, preset_id: preset.id, effectSummary: preset.effectSummary },
+      status: 'active',
+      end_at: endAt
+    })
+    .select()
+    .single()
+
+  if (evErr) return { success: false, error: evErr.message }
+
+  // 2. Apply price multipliers
+  if (preset.effects.price_effects) {
+    await applyMarketPriceEffects(preset.effects.price_effects)
+  }
+
+  // 3. If steel stock zero
+  if (preset.effects.steel_stock_zero) {
+    const { data: steelRes } = await supabaseAdmin.from('resources').select('id').eq('slug', 'steel').single()
+    if (steelRes) {
+      await supabaseAdmin.from('market_prices').update({ stock: 0 }).eq('resource_id', steelRes.id)
+    }
+  }
+
+  // 4. If stability change
+  if (preset.effects.stability_change) {
+    const { data: blds } = await supabaseAdmin.from('buildings').select('id, structural_stability')
+    if (blds) {
+      for (const b of blds) {
+        const newStab = Math.max(0, Number(b.structural_stability) + preset.effects.stability_change)
+        await supabaseAdmin.from('buildings').update({ structural_stability: newStab }).eq('id', b.id)
+      }
+    }
+  }
+
+  // 5. If inventory pct cut (e.g. 10% cement washed away)
+  if (preset.effects.inventory_pct_cut) {
+    for (const [slug, pct] of Object.entries(preset.effects.inventory_pct_cut)) {
+      const { data: res } = await supabaseAdmin.from('resources').select('id').eq('slug', slug).single()
+      if (res) {
+        const { data: invs } = await supabaseAdmin.from('team_inventory').select('id, quantity').eq('resource_id', res.id)
+        if (invs) {
+          for (const inv of invs) {
+            const cut = Math.floor(Number(inv.quantity) * (pct as number))
+            const newQty = Math.max(0, Number(inv.quantity) - cut)
+            await supabaseAdmin.from('team_inventory').update({ quantity: newQty }).eq('id', inv.id)
+          }
+        }
+      }
+    }
+  }
+
+  // 6. If fund change (fine)
+  if (preset.effects.fund_change) {
+    const { data: teams } = await supabaseAdmin.from('teams').select('id, funds')
+    if (teams) {
+      for (const t of teams) {
+        const newF = Math.max(0, Number(t.funds) + preset.effects.fund_change)
+        await supabaseAdmin.from('teams').update({ funds: newF }).eq('id', t.id)
+      }
+    }
+  }
+
+  // 7. If heatwave sustainability drop
+  if (preset.effects.heatwave_sustainability_drop) {
+    const { data: blds } = await supabaseAdmin.from('buildings').select('id, sustainability_score')
+    if (blds) {
+      for (const b of blds) {
+        if (Number(b.sustainability_score) < 50) {
+          const newSust = Math.max(0, Number(b.sustainability_score) - 5)
+          await supabaseAdmin.from('buildings').update({ sustainability_score: newSust }).eq('id', b.id)
+        }
+      }
+    }
+  }
+
+  // 8. Notify all teams
+  const { data: allTeams } = await supabaseAdmin.from('teams').select('id')
+  if (allTeams && allTeams.length > 0) {
+    const notifs = allTeams.map((t: any) => ({
+      team_id: t.id,
+      title: `🚨 ${preset.title} Triggered!`,
+      message: `${preset.desc} Effect: ${preset.effectSummary} (Duration: ${preset.duration}m)`,
+      notif_type: 'disaster'
+    }))
+    await supabaseAdmin.from('notifications').insert(notifs)
+  }
+
+  return { success: true, event: eventRecord }
 }
 
 export async function triggerTargetedEvent(eventData: any, effectsData: any) {

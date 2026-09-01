@@ -12,7 +12,7 @@ export default function BuildPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ text: string; ok: boolean } | null>(null)
 
-  const activeDisasters = events.filter(e => e.status === 'active' && (e.event_type === 'disaster' || (e.effects as any)?.construction_pause || (e.effects as any)?.construction_delay))
+  const activeDisasters = events.filter(e => e.status === 'active')
   const activeDisaster = activeDisasters[0] || null
   const [disasterRemaining, setDisasterRemaining] = useState(0)
 
@@ -39,13 +39,33 @@ export default function BuildPage() {
   }
 
   function canBuild(ft: FloorType): { ok: boolean; reason?: string } {
-    if (activeDisaster && disasterRemaining > 0) {
-      return { 
-        ok: false, 
-        reason: `🚨 Construction halted by ${activeDisaster.title} (${Math.floor(disasterRemaining / 60)}:${String(disasterRemaining % 60).padStart(2, '0')} remaining)` 
+    for (const ev of activeDisasters) {
+      const eff = (ev.effects as any) || {}
+      const rem = ev.end_at ? Math.max(0, Math.floor((new Date(ev.end_at).getTime() - Date.now()) / 1000)) : 0
+      const remStr = `${Math.floor(rem / 60)}:${String(rem % 60).padStart(2, '0')}`
+
+      // 1. General construction pause
+      if (eff.construction_pause || eff.construction_delay) {
+        return { ok: false, reason: `🚨 Construction halted by ${ev.title} (${remStr} remaining)` }
+      }
+
+      // 2. Coastal Cyclone pause (only for coastal cities)
+      if (eff.coastal_pause && (team as any)?.city?.is_coastal) {
+        return { ok: false, reason: `🌊 Coastal Cyclone: Construction paused in coastal cities (${remStr} remaining)` }
+      }
+
+      // 3. Aviation height cap (Zoning Law Changes)
+      if (eff.max_height_cap && (building?.height || 0) >= eff.max_height_cap) {
+        return { ok: false, reason: `✈️ Aviation Restriction: No building permitted above ${eff.max_height_cap}m (${remStr} remaining)` }
+      }
+
+      // 4. Central Bank freeze (Cash cannot be spent)
+      if (eff.bank_freeze && ft.cash_cost > 0) {
+        return { ok: false, reason: `🏦 Central Bank Freeze: Cash transactions locked (${remStr} remaining). Barter resources instead!` }
       }
     }
-    if (!team || team.funds < ft.cash_cost) return { ok: false, reason: `Need ₹${ft.cash_cost.toLocaleString('en-IN')} (you have ₹${team.funds.toLocaleString('en-IN')})` }
+
+    if (!team || team.funds < ft.cash_cost) return { ok: false, reason: `Need ₹${ft.cash_cost.toLocaleString('en-IN')} (you have ₹${team?.funds.toLocaleString('en-IN')})` }
     const reqs = ft.resource_requirements as Record<string, number>
     for (const [slug, qty] of Object.entries(reqs)) {
       const have = getInvQty(slug)

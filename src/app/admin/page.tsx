@@ -17,7 +17,9 @@ import {
   updateMarketStock as updateMarketStockAction,
   activateChallenge as activateChallengeAction,
   closeChallenge as closeChallengeAction,
-  approveChallenge as approveChallengeAction
+  approveChallenge as approveChallengeAction,
+  EVENT_PRESETS,
+  triggerPresetEvent
 } from '@/app/actions/admin'
 import styles from './page.module.css'
 
@@ -25,15 +27,6 @@ interface TeamFull extends Team {
   city: City | null
   building: Building | null
 }
-
-const DISASTER_PRESETS = [
-  { title: 'Flood Warning', desc: 'Heavy rainfall floods lower floors. Construction costs +30%. Cement demand spikes.', type: 'disaster', effects: { cement_price_mult: 1.3, construction_delay: true } },
-  { title: 'Earthquake Alert', desc: 'Seismic activity damages structural stability by 10 points for all affected buildings.', type: 'disaster', effects: { stability_damage: 10 } },
-  { title: 'Steel Shortage', desc: 'Supply chain disruption. Steel prices surge 50%. Stock halved.', type: 'disaster', effects: { steel_price_mult: 1.5, steel_stock_cut: 0.5 } },
-  { title: 'Market Boom', desc: 'Construction frenzy! All resource prices drop 20% for 5 minutes.', type: 'bonus', effects: { all_price_mult: 0.8 } },
-  { title: 'Government Grant', desc: 'Selected teams receive infrastructure funding bonus.', type: 'bonus', effects: { fund_bonus: 10000 } },
-  { title: 'Monsoon Season', desc: 'Heavy rains halt all construction for 3 minutes. Resources still tradeable.', type: 'disaster', effects: { construction_pause: true } },
-]
 
 export default function AdminPage() {
   const router = useRouter()
@@ -47,6 +40,7 @@ export default function AdminPage() {
   const [participants, setParticipants] = useState<any[]>([])
   const [quizResponses, setQuizResponses] = useState<any[]>([])
   const [marketFeedback, setMarketFeedback] = useState<Record<string, string>>({})
+  const [eventActionLoading, setEventActionLoading] = useState<Record<string, boolean>>({})
 
   // Event form state
   const [eTitle, setETitle] = useState('')
@@ -173,19 +167,26 @@ export default function AdminPage() {
     }
   }
 
-  async function triggerPreset(preset: typeof DISASTER_PRESETS[0]) {
-    await supabase.from('events').insert({
-      title: preset.title, description: preset.desc,
-      event_type: preset.type as any, scope: 'global',
-      effects: preset.effects, status: 'active',
-      end_at: new Date(Date.now() + 5 * 60000).toISOString()
-    })
-    loadAll()
+  async function handleTriggerPreset(presetId: string) {
+    setEventActionLoading(prev => ({ ...prev, [presetId]: true }))
+    try {
+      const res = await triggerPresetEvent(presetId)
+      if (!res.success) alert(res.error)
+      else await loadAll()
+    } finally {
+      setEventActionLoading(prev => ({ ...prev, [presetId]: false }))
+    }
   }
 
-  async function expireEvent(id: string) {
-    await expireEventAction(id)
-    loadAll()
+  async function handleExpireEvent(id: string) {
+    setEventActionLoading(prev => ({ ...prev, [id]: true }))
+    try {
+      const res = await expireEventAction(id)
+      if (!res.success) alert(res.error)
+      else await loadAll()
+    } finally {
+      setEventActionLoading(prev => ({ ...prev, [id]: false }))
+    }
   }
 
   async function createChallenge() {
@@ -380,23 +381,145 @@ export default function AdminPage() {
         {/* EVENTS TAB */}
         {tab === 'events' && (
           <div className={styles.eventsTab}>
-            <div className={styles.presetsGrid}>
-              <h3 className={styles.subTitle}>QUICK PRESETS</h3>
-              <div className={styles.presetBtns}>
-                {DISASTER_PRESETS.map(preset => (
-                  <button
-                    key={preset.title}
-                    id={`preset-${preset.title.toLowerCase().replace(/\s+/g,'-')}`}
-                    className={`${styles.presetBtn} ${preset.type === 'disaster' ? styles.presetDisaster : styles.presetBonus}`}
-                    onClick={() => triggerPreset(preset)}
-                  >
-                    <span>{preset.type === 'disaster' ? '🚨' : '✅'}</span>
-                    <span>{preset.title}</span>
-                  </button>
-                ))}
+            {/* ACTIVE EVENTS BANNER */}
+            <div className={styles.activeEvents} style={{ marginBottom: '28px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 className={styles.subTitle} style={{ margin: 0 }}>
+                  🚨 LIVE ACTIVE CRISES ({events.filter(e => e.status === 'active').length})
+                </h3>
+                {events.filter(e => e.status === 'active').length > 0 && (
+                  <span style={{ fontSize: '12px', color: 'var(--hot-pink)', fontWeight: 700 }}>
+                    Click &quot;End Event&quot; to restore normal gameplay immediately
+                  </span>
+                )}
+              </div>
+              {events.filter(e => e.status === 'active').map(ev => {
+                const rem = ev.end_at ? Math.max(0, Math.floor((new Date(ev.end_at).getTime() - Date.now()) / 1000)) : 0
+                const remStr = `${Math.floor(rem / 60)}:${String(rem % 60).padStart(2, '0')}`
+                return (
+                  <div key={ev.id} className={`${styles.eventRow} game-card`} style={{ borderLeft: '4px solid var(--hot-pink)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className={styles.eventRowTitle} style={{ fontSize: '16px', fontWeight: 700 }}>{ev.title}</span>
+                        <span className="stat-pill stat-pill-critical" style={{ fontSize: '11px' }}>⏱️ {remStr} LEFT</span>
+                        <span className="stat-pill stat-pill-info" style={{ fontSize: '11px' }}>{ev.scope.toUpperCase()}</span>
+                      </div>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
+                        {ev.description} — <strong>{(ev.effects as any)?.effectSummary || 'Effects active'}</strong>
+                      </p>
+                    </div>
+                    <button 
+                      id={`expire-${ev.id.slice(0,8)}`} 
+                      className="game-btn game-btn-danger" 
+                      style={{ padding: '8px 16px', fontWeight: 700, fontSize: '13px', whiteSpace: 'nowrap' }} 
+                      onClick={() => handleExpireEvent(ev.id)}
+                      disabled={eventActionLoading[ev.id]}
+                    >
+                      {eventActionLoading[ev.id] ? 'Ending...' : '⏹ END EVENT NOW'}
+                    </button>
+                  </div>
+                )
+              })}
+              {events.filter(e => e.status === 'active').length === 0 && (
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center' }}>
+                  No crisis active right now. Select a preset below to trigger one.
+                </div>
+              )}
+            </div>
+
+            {/* 12 DISASTER PRESETS */}
+            <div style={{ marginBottom: '36px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <h3 className={styles.subTitle} style={{ fontSize: '20px', marginBottom: '6px' }}>
+                  ⚡ 12 DISASTER & EVENT PRESETS (1-CLICK START & END)
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
+                  Click any preset to trigger instant in-game effects (market multipliers, building halts, height caps, inventory loss) and broadcast live alerts to all teams.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                {EVENT_PRESETS.map(preset => {
+                  const activeEv = events.find(e => e.status === 'active' && ((e.effects as any)?.preset_id === preset.id || e.title === preset.title))
+                  const isActive = Boolean(activeEv)
+                  const isLoading = eventActionLoading[preset.id] || (activeEv && eventActionLoading[activeEv.id])
+
+                  return (
+                    <div 
+                      key={preset.id} 
+                      className="game-card" 
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        padding: '18px',
+                        border: isActive ? '2px solid var(--hot-pink)' : '1px solid var(--border-subtle)',
+                        boxShadow: isActive ? '0 0 20px rgba(255, 45, 120, 0.25)' : 'none',
+                        background: isActive ? 'rgba(255, 45, 120, 0.05)' : 'var(--bg-card)',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '24px' }}>{preset.icon}</span>
+                            <span style={{ fontSize: '16px', fontWeight: 700, color: isActive ? 'var(--hot-pink)' : 'var(--text-primary)' }}>
+                              {preset.title}
+                            </span>
+                          </div>
+                          <span className={`stat-pill ${isActive ? 'stat-pill-critical' : 'stat-pill-info'}`} style={{ fontSize: '10px' }}>
+                            {isActive ? '🔴 ACTIVE' : `⏱️ ${preset.duration} MIN`}
+                          </span>
+                        </div>
+
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '12px' }}>
+                          {preset.desc}
+                        </p>
+
+                        <div style={{
+                          background: isActive ? 'rgba(255, 45, 120, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                          border: `1px solid ${isActive ? 'rgba(255, 45, 120, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+                          borderRadius: '6px',
+                          padding: '8px 12px',
+                          fontSize: '12px',
+                          color: isActive ? '#fff' : 'var(--neon-lime)',
+                          fontWeight: 600,
+                          marginBottom: '16px'
+                        }}>
+                          ⚡ Effect: {preset.effectSummary}
+                        </div>
+                      </div>
+
+                      <div>
+                        {isActive ? (
+                          <button
+                            id={`end-preset-${preset.id}`}
+                            className="game-btn game-btn-danger"
+                            style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
+                            onClick={() => activeEv && handleExpireEvent(activeEv.id)}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? 'Ending Event...' : '⏹ END THIS EVENT'}
+                          </button>
+                        ) : (
+                          <button
+                            id={`start-preset-${preset.id}`}
+                            className="game-btn game-btn-primary"
+                            style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
+                            onClick={() => handleTriggerPreset(preset.id)}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? 'Starting...' : `▶ START EVENT (${preset.duration}m)`}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
+            {/* CUSTOM EVENT FORM */}
             <div className={styles.eventForm}>
               <h3 className={styles.subTitle}>CREATE CUSTOM EVENT</h3>
               <div className={styles.formGrid}>
@@ -477,23 +600,8 @@ export default function AdminPage() {
                 </div>
               </div>
               <button id="trigger-event" className="game-btn game-btn-danger" onClick={triggerEvent} disabled={!eTitle}>
-                🚨 TRIGGER EVENT
+                🚨 TRIGGER CUSTOM EVENT
               </button>
-            </div>
-
-            <div className={styles.activeEvents}>
-              <h3 className={styles.subTitle}>ACTIVE EVENTS</h3>
-              {events.filter(e=>e.status==='active').map(ev => (
-                <div key={ev.id} className={`${styles.eventRow} game-card`}>
-                  <div>
-                    <span className={styles.eventRowTitle}>{ev.title}</span>
-                    <span className={`stat-pill ${ev.event_type === 'disaster' ? 'stat-pill-critical' : 'stat-pill-safe'}`} style={{marginLeft:'8px'}}>{ev.scope}</span>
-                    <p style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'4px'}}>{ev.description}</p>
-                  </div>
-                  <button id={`expire-${ev.id.slice(0,8)}`} className="game-btn game-btn-ghost game-btn-sm" onClick={() => expireEvent(ev.id)}>Expire</button>
-                </div>
-              ))}
-              {events.filter(e=>e.status==='active').length === 0 && <p style={{color:'var(--text-muted)'}}>No active events</p>}
             </div>
           </div>
         )}
