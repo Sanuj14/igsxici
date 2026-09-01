@@ -18,9 +18,9 @@ import {
   activateChallenge as activateChallengeAction,
   closeChallenge as closeChallengeAction,
   approveChallenge as approveChallengeAction,
-  EVENT_PRESETS,
   triggerPresetEvent
 } from '@/app/actions/admin'
+import { EVENT_PRESETS } from '@/lib/constants/events'
 import styles from './page.module.css'
 
 interface TeamFull extends Team {

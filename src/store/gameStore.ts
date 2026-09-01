@@ -68,7 +68,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ isLoading: true })
     try {
       const [teamRes, buildingRes, inventoryRes, notifRes] = await Promise.all([
-        supabase.from('teams').select('*').eq('id', teamId).single(),
+        supabase.from('teams').select('*, city:cities(*)').eq('id', teamId).single(),
         supabase.from('buildings').select('*').eq('team_id', teamId).single(),
         supabase.from('team_inventory').select('*, resource:resources(*)').eq('team_id', teamId),
         supabase.from('notifications').select('*').eq('team_id', teamId).order('created_at', { ascending: false }).limit(50),

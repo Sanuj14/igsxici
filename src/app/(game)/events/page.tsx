@@ -2,21 +2,40 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
-import { EVENT_PRESETS } from '@/app/actions/admin'
+import { EVENT_PRESETS } from '@/lib/constants/events'
 import styles from './page.module.css'
 
 export default function EventsPage() {
   const { events, team, loadEvents } = useGameStore()
+  const [dbEvents, setDbEvents] = useState<any[]>([])
   const [now, setNow] = useState(Date.now())
 
+  async function fetchEvents() {
+    try {
+      const { data } = await supabase.from('events').select('*').order('created_at', { ascending: false }).limit(30)
+      if (data) setDbEvents(data)
+    } catch (e) {
+      console.error('Error fetching events:', e)
+    }
+  }
+
   useEffect(() => {
+    fetchEvents()
     const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
+    const ch = supabase.channel('events-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, fetchEvents)
+      .subscribe()
+    return () => {
+      clearInterval(timer)
+      supabase.removeChannel(ch)
+    }
   }, [])
 
-  const activeEvents = (events || []).filter(e => e && e.status === 'active')
-  const pastEvents = (events || []).filter(e => e && e.status !== 'active')
+  const currentEvents = dbEvents.length > 0 ? dbEvents : (events || [])
+  const activeEvents = currentEvents.filter(e => e && e.status === 'active')
+  const pastEvents = currentEvents.filter(e => e && e.status !== 'active')
 
   return (
     <div className={styles.page}>
