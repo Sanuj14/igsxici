@@ -211,6 +211,7 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
     { href: '/marketplace', label: 'MARKET', icon: '💰' },
     { href: '/build', label: 'BUILD', icon: '🔨' },
     { href: '/trade', label: 'TRADE', icon: '🤝' },
+    { href: '/events', label: 'EVENTS', icon: '🚨' },
     { href: '/challenges', label: 'CHALLENGES', icon: '⚡' },
     { href: '/leaderboard', label: 'LEADERBOARD', icon: '🏆' },
   ]
@@ -382,6 +383,11 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
               <span className={styles.navItemLabel}>{item.label}</span>
               {item.href === '/challenges' && unreadCount > 0 && (
                 <span className={styles.navBadge}>{unreadCount}</span>
+              )}
+              {item.href === '/events' && events.filter(e => e && e.status === 'active').length > 0 && (
+                <span className={styles.navBadge} style={{ background: 'var(--hot-pink)' }}>
+                  {events.filter(e => e && e.status === 'active').length}
+                </span>
               )}
             </Link>
           ))}

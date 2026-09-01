@@ -393,19 +393,22 @@ export default function AdminPage() {
                   </span>
                 )}
               </div>
-              {events.filter(e => e.status === 'active').map(ev => {
+              {events.filter(e => e && e.status === 'active').map(ev => {
                 const rem = ev.end_at ? Math.max(0, Math.floor((new Date(ev.end_at).getTime() - Date.now()) / 1000)) : 0
                 const remStr = `${Math.floor(rem / 60)}:${String(rem % 60).padStart(2, '0')}`
+                const scopeStr = String(ev.scope || 'global').toUpperCase()
+                const summaryStr = (typeof ev.effects === 'object' && ev.effects !== null && (ev.effects as any)?.effectSummary) || 'Effects active'
+
                 return (
                   <div key={ev.id} className={`${styles.eventRow} game-card`} style={{ borderLeft: '4px solid var(--hot-pink)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className={styles.eventRowTitle} style={{ fontSize: '16px', fontWeight: 700 }}>{ev.title}</span>
                         <span className="stat-pill stat-pill-critical" style={{ fontSize: '11px' }}>⏱️ {remStr} LEFT</span>
-                        <span className="stat-pill stat-pill-info" style={{ fontSize: '11px' }}>{ev.scope.toUpperCase()}</span>
+                        <span className="stat-pill stat-pill-info" style={{ fontSize: '11px' }}>{scopeStr}</span>
                       </div>
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-                        {ev.description} — <strong>{(ev.effects as any)?.effectSummary || 'Effects active'}</strong>
+                        {ev.description} — <strong>{summaryStr}</strong>
                       </p>
                     </div>
                     <button 
@@ -420,7 +423,7 @@ export default function AdminPage() {
                   </div>
                 )
               })}
-              {events.filter(e => e.status === 'active').length === 0 && (
+              {events.filter(e => e && e.status === 'active').length === 0 && (
                 <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center' }}>
                   No crisis active right now. Select a preset below to trigger one.
                 </div>
@@ -440,7 +443,7 @@ export default function AdminPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
                 {EVENT_PRESETS.map(preset => {
-                  const activeEv = events.find(e => e.status === 'active' && ((e.effects as any)?.preset_id === preset.id || e.title === preset.title))
+                  const activeEv = (events || []).find(e => e && e.status === 'active' && ((typeof e.effects === 'object' && e.effects !== null && (e.effects as any)?.preset_id === preset.id) || e.title === preset.title))
                   const isActive = Boolean(activeEv)
                   const isLoading = eventActionLoading[preset.id] || (activeEv && eventActionLoading[activeEv.id])
 
