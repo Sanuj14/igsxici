@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
 import { getQuestionsForChallenge, QuizQuestion } from '@/lib/constants/quizQuestions'
-import { submitQuizResponseAction } from '@/app/actions/challenges'
+import { submitQuizResponseAction, checkQuizEligibilityAction } from '@/app/actions/challenges'
 
 function QuizContent() {
   const router = useRouter()
@@ -20,6 +20,9 @@ function QuizContent() {
   const [challenge, setChallenge] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [locked, setLocked] = useState(false)
+  const [slotBlocked, setSlotBlocked] = useState(false)
+  const [slotBlockReason, setSlotBlockReason] = useState('')
+  const [maxSlots, setMaxSlots] = useState(5)
   const [totalDurationSecs, setTotalDurationSecs] = useState(60)
   const [timeLeft, setTimeLeft] = useState(60)
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
@@ -33,13 +36,17 @@ function QuizContent() {
     async function checkStatus() {
       if (!teamId) return
 
-      // 1. Fetch challenge details
-      const { data: ch } = await supabase
-        .from('challenges')
-        .select('*')
-        .eq('id', challengeId)
-        .single()
+      // 1. Strict Eligibility & Slot Limit Check
+      const check = await checkQuizEligibilityAction(teamId, challengeId)
+      if (!check.eligible) {
+        setSlotBlocked(true)
+        setMaxSlots(check.maxSlots || 5)
+        setSlotBlockReason(check.error || 'Challenge slots are full.')
+        setLoading(false)
+        return
+      }
 
+      const ch = check.challenge
       if (ch) {
         setChallenge(ch)
         const durSecs = Math.max(10, (ch.duration_minutes || 1) * 60)
@@ -53,17 +60,9 @@ function QuizContent() {
         }
       }
 
-      // 2. Check if team already answered
-      const { data: resp } = await (supabase as any)
-        .from('quiz_responses')
-        .select('*')
-        .eq('team_id', teamId)
-        .eq('challenge_id', challengeId)
-        .single()
-      
-      if (resp) {
+      if (check.alreadyAnswered) {
         setLocked(true)
-        setScore(resp.score)
+        setScore(check.score || 0)
       }
       setLoading(false)
     }
@@ -130,12 +129,18 @@ function QuizContent() {
 
     try {
       const res = await submitQuizResponseAction(challengeId, teamId, finalAnswers, calculatedScore, timeTaken)
+      if (!res.success) {
+        alert(res.error)
+        setSubmitting(false)
+        return
+      }
       setSubResult(res)
       setScore(calculatedScore)
       setSubmitted(true)
       if (teamId) await loadTeamData(teamId)
     } catch (e: any) {
       console.error('Quiz submit error:', e)
+      alert(e.message || 'Submission error')
     } finally {
       setSubmitting(false)
     }
@@ -143,6 +148,26 @@ function QuizContent() {
 
   if (loading) {
     return <div style={{ padding: '40px', textAlign: 'center', color: '#fff' }}>Loading Quiz...</div>
+  }
+
+  if (slotBlocked) {
+    return (
+      <div style={{ padding: '60px 20px', display: 'flex', justifyContent: 'center' }}>
+        <div className="game-card" style={{ maxWidth: '600px', width: '100%', textAlign: 'center', borderTop: '4px solid var(--status-critical)' }}>
+          <span style={{ fontSize: '64px', display: 'block', marginBottom: '20px' }}>🔒</span>
+          <h2 style={{ fontSize: '28px', color: 'var(--status-critical)', marginBottom: '16px' }}>CHALLENGE SLOTS FULL</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.6', marginBottom: '24px' }}>
+            {slotBlockReason || `All ${maxSlots} slots for this quiz challenge have already been claimed by other teams.`}
+          </p>
+          <div style={{ background: 'rgba(255,45,120,0.1)', border: '1px solid var(--hot-pink)', borderRadius: '8px', padding: '12px 16px', marginBottom: '28px', color: '#fff', fontSize: '13px' }}>
+            ⚠️ Only teams holding an active slot can participate and submit answers.
+          </div>
+          <button onClick={() => router.push('/challenges')} className="game-btn game-btn-primary">
+            ← BACK TO CHALLENGES
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (locked) {

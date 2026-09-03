@@ -22,6 +22,7 @@ import {
   getAdminChallengesDataAction,
   removeParticipantFromSlotAction
 } from '@/app/actions/admin'
+import { evaluateAndCloseQuiz } from '@/app/actions/challenges'
 import { EVENT_PRESETS } from '@/lib/constants/events'
 import styles from './page.module.css'
 
@@ -729,6 +730,24 @@ export default function AdminPage() {
                       </div>
                       <div className={styles.chActions} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         {ch.status === 'upcoming' && <button id={`activate-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-primary game-btn-sm" onClick={() => activateChallenge(ch.id)}>Activate</button>}
+                        {ch.status === 'active' && ch.challenge_type === 'quiz' && (
+                          <button
+                            className="game-btn game-btn-lime game-btn-sm"
+                            title="Auto-evaluate scores among slot holders and deposit prize to top team"
+                            onClick={async () => {
+                              if (confirm(`Auto-evaluate quiz "${ch.title}" now and deposit ₹${ch.reward_funds.toLocaleString('en-IN')} to the top scoring slot team?`)) {
+                                const res = await evaluateAndCloseQuiz(ch.id)
+                                if (!res.success) alert(res.error)
+                                else {
+                                  alert(res.winners?.length ? `🏆 Winner: ${res.winners.map((w: any) => `${w.name} (Score ${w.score}/5, ${w.time}s - Awarded ₹${w.rewardAwarded})`).join(', ')}` : 'Quiz closed.')
+                                  loadAll()
+                                }
+                              }
+                            }}
+                          >
+                            ⚡ Auto-Award & Close
+                          </button>
+                        )}
                         {ch.status === 'active' && <button id={`close-ch-${ch.id.slice(0,8)}`} className="game-btn game-btn-ghost game-btn-sm" onClick={() => closeChallenge(ch.id)}>Close</button>}
                         <button 
                           className="game-btn game-btn-ghost game-btn-sm" 

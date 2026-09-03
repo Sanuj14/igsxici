@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
-import { claimChallengeSlotAction } from '@/app/actions/challenges'
+import { claimChallengeSlotAction, getTeamClaimedChallengesAction } from '@/app/actions/challenges'
 import styles from './page.module.css'
 
 const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -26,13 +26,10 @@ export default function ChallengesPage() {
   useEffect(() => {
     async function loadClaimed() {
       if (!teamId) return
-      const { data } = await supabase
-        .from('challenge_participants')
-        .select('challenge_id')
-        .eq('team_id', teamId)
-      if (data) {
+      const res = await getTeamClaimedChallengesAction(teamId)
+      if (res.success && res.claimedChallengeIds) {
         const map: Record<string, boolean> = {}
-        data.forEach((p: any) => { map[p.challenge_id] = true })
+        res.claimedChallengeIds.forEach((id: string) => { map[id] = true })
         setClaimedMap(map)
       }
     }
@@ -60,13 +57,19 @@ export default function ChallengesPage() {
     setLoading(p => ({ ...p, [challengeId]: true }))
     try {
       const res = await claimChallengeSlotAction(teamId, challengeId)
-      if (!res.success) throw new Error(res.error)
+      if (!res.success) {
+        setMessages(p => ({ ...p, [challengeId]: { text: `❌ ${res.error}`, ok: false } }))
+        setLoading(p => ({ ...p, [challengeId]: false }))
+        alert(`❌ ${res.error}`)
+        return
+      }
       setClaimedMap(p => ({ ...p, [challengeId]: true }))
       await loadChallenges()
       router.push(`/challenges/quiz?challengeId=${challengeId}`)
     } catch (e: any) {
       setMessages(p => ({ ...p, [challengeId]: { text: e.message, ok: false } }))
       setLoading(p => ({ ...p, [challengeId]: false }))
+      alert(`❌ ${e.message}`)
     }
   }
 
@@ -112,7 +115,7 @@ export default function ChallengesPage() {
                     </div>
                     <div className={styles.slotsBar}>
                       <span className={styles.slotsLeft} style={{ color: slotsLeft === 0 ? 'var(--status-critical)' : slotsLeft <= 2 ? 'var(--status-warning)' : 'var(--status-safe)' }}>
-                        {slotsLeft}/{challenge.max_slots} slots
+                        {slotsLeft}/{challenge.max_slots} slots left
                       </span>
                     </div>
                   </div>
@@ -162,8 +165,12 @@ export default function ChallengesPage() {
                         {loading[challenge.id] ? 'Entering...' : `📝 CLAIM SPOT & START QUIZ (${slotsLeft} left)`}
                       </button>
                     ) : (
-                      <button className={`game-btn game-btn-ghost ${styles.claimBtn}`} disabled>
-                        🔒 All Spots Claimed
+                      <button
+                        className={`game-btn game-btn-ghost ${styles.claimBtn}`}
+                        style={{ color: 'var(--status-critical)', borderColor: 'rgba(255,45,120,0.4)', opacity: 0.8 }}
+                        onClick={() => alert(`All ${challenge.max_slots} slots are full! Only ${challenge.max_slots} teams were permitted for this challenge.`)}
+                      >
+                        🔒 All {challenge.max_slots} Slots Taken
                       </button>
                     )
                   ) : (
@@ -173,7 +180,7 @@ export default function ChallengesPage() {
                       onClick={() => claimSlot(challenge.id)}
                       disabled={loading[challenge.id] || (slotsLeft === 0 && !hasClaimed) || hasClaimed}
                     >
-                      {loading[challenge.id] ? 'Claiming...' : hasClaimed ? '✅ Slot Claimed' : slotsLeft === 0 ? '🔒 All Slots Taken' : `CLAIM SLOT (${slotsLeft} left)`}
+                      {loading[challenge.id] ? 'Claiming...' : hasClaimed ? '✅ Slot Claimed' : slotsLeft === 0 ? `🔒 All ${challenge.max_slots} Slots Taken` : `CLAIM SLOT (${slotsLeft} left)`}
                     </button>
                   )}
                 </div>
