@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
 import type { FloorType } from '@/lib/supabase/types'
+import { syncTeamScoreAction } from '@/app/actions/admin'
 import styles from './page.module.css'
 
 export default function BuildPage() {
@@ -89,6 +90,7 @@ export default function BuildPage() {
       setResult({ text: `✅ ${selected.name} built! +${res.height_gain}m height`, ok: true })
       setSelected(null)
       await loadTeamData(teamId)
+      await syncTeamScoreAction(teamId)
     } catch (e: any) {
       setResult({ text: e.message, ok: false })
     } finally {

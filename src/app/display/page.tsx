@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { calculateTeamScore } from '@/lib/constants/scoring'
 import styles from './page.module.css'
 
 export default function DisplayPage() {
@@ -23,11 +24,7 @@ export default function DisplayPage() {
     const enriched = (teamsRes.data || []).map((t: any) => ({
       ...t,
       building: buildMap[t.id] || null,
-      score: (buildMap[t.id]?.height || 0) * 0.25 +
-        (buildMap[t.id]?.building_value || 0) / 1000 * 0.25 +
-        (buildMap[t.id]?.structural_stability || 100) * 0.2 +
-        (buildMap[t.id]?.sustainability_score || 0) * 0.15 +
-        (t.funds / 10000) * 0.15
+      score: calculateTeamScore(buildMap[t.id], t.funds)
     })).sort((a: any, b: any) => b.score - a.score)
 
     setEntries(enriched)

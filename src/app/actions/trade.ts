@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@supabase/supabase-js'
+import { calculateTeamScore } from '@/lib/constants/scoring'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,18 +57,12 @@ async function adjustInventory(teamId: string, resourceId: string, deltaQty: num
 async function recalculateTeamScore(teamId: string) {
   try {
     const [{ data: b }, { data: t }] = await Promise.all([
-      supabaseAdmin.from('buildings').select('height, building_value, structural_stability, sustainability_score').eq('team_id', teamId).maybeSingle(),
+      supabaseAdmin.from('buildings').select('height, building_value, sustainability_score').eq('team_id', teamId).maybeSingle(),
       supabaseAdmin.from('teams').select('funds').eq('id', teamId).maybeSingle()
     ])
 
     if (t) {
-      const height = Number(b?.height) || 0
-      const bValue = Number(b?.building_value) || 0
-      const stability = Number(b?.structural_stability) || 100
-      const sustainability = Number(b?.sustainability_score) || 0
-      const funds = Number(t.funds) || 0
-
-      const score = (height * 0.25) + ((bValue / 1000) * 0.25) + (stability * 0.20) + (sustainability * 0.15) + ((funds / 10000) * 0.15)
+      const score = calculateTeamScore(b, t.funds)
       await supabaseAdmin.from('teams').update({ score }).eq('id', teamId)
     }
   } catch (e) {

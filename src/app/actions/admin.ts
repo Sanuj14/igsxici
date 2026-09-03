@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/lib/supabase/types'
+import { calculateTeamScore } from '@/lib/constants/scoring'
 
 // Admin client — bypasses RLS
 const supabaseAdmin = createClient(
@@ -593,5 +594,43 @@ export async function removeParticipantFromSlotAction(participantId: string, cha
   }
 
   return { success: true }
+}
+
+export async function syncTeamScoreAction(teamId: string) {
+  if (!teamId) return { success: false }
+  try {
+    const [{ data: b }, { data: t }] = await Promise.all([
+      supabaseAdmin.from('buildings').select('height, building_value, sustainability_score').eq('team_id', teamId).maybeSingle(),
+      supabaseAdmin.from('teams').select('funds').eq('id', teamId).maybeSingle()
+    ])
+    if (t) {
+      const score = calculateTeamScore(b, t.funds)
+      await supabaseAdmin.from('teams').update({ score }).eq('id', teamId)
+    }
+    return { success: true }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
+}
+
+export async function syncAllTeamScoresAction() {
+  try {
+    const [{ data: teams }, { data: buildings }] = await Promise.all([
+      supabaseAdmin.from('teams').select('id, funds'),
+      supabaseAdmin.from('buildings').select('team_id, height, building_value, sustainability_score')
+    ])
+
+    const buildMap = new Map((buildings || []).map((b: any) => [b.team_id, b]))
+
+    for (const t of (teams || [])) {
+      const b = buildMap.get(t.id)
+      const score = calculateTeamScore(b, t.funds)
+      await supabaseAdmin.from('teams').update({ score }).eq('id', t.id)
+    }
+
+    return { success: true }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
 }
 

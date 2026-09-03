@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
+import { calculateTeamScore } from '@/lib/constants/scoring'
 import styles from './page.module.css'
 
 interface LeaderboardEntry {
@@ -46,10 +47,10 @@ export default function LeaderboardPage() {
       building: buildingMap[t.id] || null
     }))
 
-    // Recalculate score locally for display
+    // Recalculate score locally for display (Stability removed)
     enriched.sort((a, b) => {
-      const scoreA = (a.building?.height || 0) * 0.25 + (a.building?.building_value || 0) / 1000 * 0.25 + (a.building?.structural_stability || 0) * 0.2 + (a.building?.sustainability_score || 0) * 0.15 + (a.funds / 10000) * 0.15
-      const scoreB = (b.building?.height || 0) * 0.25 + (b.building?.building_value || 0) / 1000 * 0.25 + (b.building?.structural_stability || 0) * 0.2 + (b.building?.sustainability_score || 0) * 0.15 + (b.funds / 10000) * 0.15
+      const scoreA = calculateTeamScore(a.building, a.funds)
+      const scoreB = calculateTeamScore(b.building, b.funds)
       return scoreB - scoreA
     })
 
@@ -135,7 +136,7 @@ export default function LeaderboardPage() {
             {entries.map((entry, i) => {
               const isMe = entry.id === teamId
               const city = entry.city as any
-              const score = (entry.building?.height || 0) * 0.25 + (entry.building?.building_value || 0) / 1000 * 0.25 + (entry.building?.structural_stability || 0) * 0.2 + (entry.building?.sustainability_score || 0) * 0.15 + (entry.funds / 10000) * 0.15
+              const score = calculateTeamScore(entry.building, entry.funds)
               return (
                 <div key={entry.id} className={`${styles.tableRow} ${isMe ? styles.tableRowMe : ''} ${i === 0 ? styles.tableRowFirst : ''}`}>
                   <span className={styles.tdRank}>
