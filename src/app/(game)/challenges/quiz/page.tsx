@@ -1,67 +1,9 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { useGameStore } from '@/store/gameStore'
-
-const QUESTIONS = [
-  {
-    id: 1,
-    text: "What does RCC stand for in construction?",
-    options: [
-      { id: 'A', text: "Reinforced Cement Concrete" },
-      { id: 'B', text: "Raw Calcium Compound" },
-      { id: 'C', text: "Rigid Carbon Composite" },
-      { id: 'D', text: "Refined Clay Cement" }
-    ],
-    correctId: 'A'
-  },
-  {
-    id: 2,
-    text: "Which structural system uses a triangular arrangement for strength?",
-    options: [
-      { id: 'A', text: "Shell structure" },
-      { id: 'B', text: "Truss" },
-      { id: 'C', text: "Arch" },
-      { id: 'D', text: "Cantilever" }
-    ],
-    correctId: 'B'
-  },
-  {
-    id: 3,
-    text: "What is the minimum grade of concrete used for RCC work as per IS code?",
-    options: [
-      { id: 'A', text: "M10" },
-      { id: 'B', text: "M15" },
-      { id: 'C', text: "M20" },
-      { id: 'D', text: "M25" }
-    ],
-    correctId: 'C'
-  },
-  {
-    id: 4,
-    text: "The ratio of water to cement in a concrete mix is known as:",
-    options: [
-      { id: 'A', text: "Mix ratio" },
-      { id: 'B', text: "Water-cement ratio" },
-      { id: 'C', text: "Slump ratio" },
-      { id: 'D', text: "Hydration factor" }
-    ],
-    correctId: 'B'
-  },
-  {
-    id: 5,
-    text: "Which foundation type is used when soil bearing capacity is very low?",
-    options: [
-      { id: 'A', text: "Strip foundation" },
-      { id: 'B', text: "Raft foundation" },
-      { id: 'C', text: "Isolated footing" },
-      { id: 'D', text: "Pile foundation" }
-    ],
-    correctId: 'B'
-  }
-]
-
+import { getQuestionsForChallenge, QuizQuestion } from '@/lib/constants/quizQuestions'
 import { submitQuizResponseAction } from '@/app/actions/challenges'
 
 function QuizContent() {
@@ -70,6 +12,10 @@ function QuizContent() {
   const { teamId, loadTeamData } = useGameStore()
   
   const challengeId = searchParams.get('challengeId') || 'civil-quiz-v1'
+
+  const questions: QuizQuestion[] = useMemo(() => {
+    return getQuestionsForChallenge(challengeId, 5)
+  }, [challengeId])
 
   const [challenge, setChallenge] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -149,14 +95,16 @@ function QuizContent() {
   }, [loading, locked, submitted, answers, totalDurationSecs])
 
   const handleSelect = (optionId: string) => {
+    const currentQ = questions[currentQuestionIdx]
+    if (!currentQ) return
     setAnswers(prev => ({
       ...prev,
-      [QUESTIONS[currentQuestionIdx].id]: optionId
+      [currentQ.id]: optionId
     }))
   }
 
   const handleNext = () => {
-    if (currentQuestionIdx < QUESTIONS.length - 1) {
+    if (currentQuestionIdx < questions.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1)
     }
   }
@@ -172,7 +120,7 @@ function QuizContent() {
     setSubmitting(true)
     
     let calculatedScore = 0
-    QUESTIONS.forEach(q => {
+    questions.forEach(q => {
       if (finalAnswers[q.id] === q.correctId) {
         calculatedScore += 1
       }
@@ -204,7 +152,7 @@ function QuizContent() {
           <span style={{ fontSize: '64px', display: 'block', marginBottom: '20px' }}>🔒</span>
           <h2 style={{ fontSize: '32px', color: 'var(--neon-lime)', marginBottom: '16px' }}>QUIZ ATTEMPTED</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Your team scored <strong>{score} / {QUESTIONS.length}</strong> on this challenge.
+            Your team scored <strong>{score} / {questions.length}</strong> on this challenge.
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '32px' }}>
             {challenge?.status === 'closed' 
@@ -231,7 +179,7 @@ function QuizContent() {
             {subResult?.challengeConcluded ? (isWinner ? 'CHALLENGE WON!' : 'QUIZ CONCLUDED!') : 'QUIZ SUBMITTED!'}
           </h2>
           <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '16px 0', color: '#fff' }}>
-            {score} / {QUESTIONS.length}
+            {score} / {questions.length}
           </div>
 
           {subResult?.challengeConcluded ? (
@@ -263,7 +211,7 @@ function QuizContent() {
     )
   }
 
-  const q = QUESTIONS[currentQuestionIdx]
+  const q = questions[currentQuestionIdx] || questions[0]
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60)
     const s = secs % 60
@@ -275,7 +223,14 @@ function QuizContent() {
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', margin: 0, textTransform: 'uppercase' }}>Civil Engineering Quiz</h1>
+        <div>
+          <h1 style={{ fontSize: '24px', margin: 0, textTransform: 'uppercase' }}>
+            {challenge?.title || 'Civil Engineering Quiz'}
+          </h1>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            5 Randomized Questions • Challenge: {challengeId.slice(0, 8)}
+          </div>
+        </div>
         <div style={{
           fontSize: '24px', 
           fontWeight: 'bold',
@@ -291,13 +246,20 @@ function QuizContent() {
       </div>
 
       <div className="game-card" style={{ marginBottom: '24px', padding: '32px' }}>
-        <div style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '14px', fontWeight: 'bold' }}>
-          QUESTION {currentQuestionIdx + 1} OF {QUESTIONS.length}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: 'bold' }}>
+            QUESTION {currentQuestionIdx + 1} OF {questions.length}
+          </div>
+          {q?.category && (
+            <span className="stat-pill stat-pill-info" style={{ fontSize: '11px', fontWeight: 600 }}>
+              {q.category.toUpperCase()}
+            </span>
+          )}
         </div>
-        <h2 style={{ fontSize: '24px', lineHeight: '1.4', marginBottom: '32px' }}>{q.text}</h2>
+        <h2 style={{ fontSize: '22px', lineHeight: '1.4', marginBottom: '32px' }}>{q?.text}</h2>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {q.options.map(opt => (
+          {q?.options.map(opt => (
             <button
               key={opt.id}
               onClick={() => handleSelect(opt.id)}
@@ -339,12 +301,12 @@ function QuizContent() {
           ← PREVIOUS
         </button>
 
-        {currentQuestionIdx === QUESTIONS.length - 1 ? (
+        {currentQuestionIdx === questions.length - 1 ? (
           <button 
             onClick={() => handleSubmit(answers)} 
             className="game-btn game-btn-primary"
             style={{ background: 'var(--hot-pink)', color: 'white', borderColor: 'var(--hot-pink)' }}
-            disabled={submitting || Object.keys(answers).length < QUESTIONS.length}
+            disabled={submitting || Object.keys(answers).length < questions.length}
           >
             {submitting ? 'SUBMITTING...' : 'SUBMIT QUIZ'}
           </button>

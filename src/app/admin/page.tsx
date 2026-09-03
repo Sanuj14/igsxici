@@ -18,7 +18,9 @@ import {
   activateChallenge as activateChallengeAction,
   closeChallenge as closeChallengeAction,
   approveChallenge as approveChallengeAction,
-  triggerPresetEvent
+  triggerPresetEvent,
+  getAdminChallengesDataAction,
+  removeParticipantFromSlotAction
 } from '@/app/actions/admin'
 import { EVENT_PRESETS } from '@/lib/constants/events'
 import styles from './page.module.css'
@@ -105,22 +107,22 @@ export default function AdminPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'buildings' }, loadAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'market_prices' }, loadAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'challenges' }, loadAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'challenge_participants' }, loadAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_responses' }, loadAll)
       
     ch.subscribe()
     return () => { supabase.removeChannel(ch) }
   }
 
   async function loadAll() {
-    const [teamsRes, buildingsRes, citiesRes, challengesRes, eventsRes, marketRes, gamesRes, partsRes, quizRes] = await Promise.all([
+    const [teamsRes, buildingsRes, citiesRes, eventsRes, marketRes, gamesRes, chData] = await Promise.all([
       supabase.from('teams').select('*, city:cities(id,name,color,slug,description,advantages,risks,starting_bonus,coordinates_x,coordinates_y,is_coastal,created_at)').order('score', { ascending: false }),
       supabase.from('buildings').select('*'),
       supabase.from('cities').select('*'),
-      supabase.from('challenges').select('*').order('created_at', { ascending: false }),
       supabase.from('events').select('*').order('created_at', { ascending: false }).limit(20),
       supabase.from('market_prices').select('*, resource:resources(*)'),
       supabase.from('games').select('*').order('created_at', { ascending: false }),
-      supabase.from('challenge_participants').select('*, team:teams(name)'),
-      (supabase as any).from('quiz_responses').select('*, team:teams(name)')
+      getAdminChallengesDataAction()
     ])
     const buildMap: Record<string, Building> = {}
     buildingsRes.data?.forEach((b: any) => { buildMap[b.team_id] = b })
@@ -131,12 +133,19 @@ export default function AdminPage() {
 
     setTeams(teamsFull)
     setCities(citiesRes.data || [])
-    setChallenges(challengesRes.data || [])
+    setChallenges(chData.challenges || [])
+    setParticipants(chData.participants || [])
+    setQuizResponses(chData.quizResponses || [])
     setEvents(eventsRes.data || [])
     setMarketPrices(marketRes.data || [])
     setGames(gamesRes.data || [])
-    setParticipants(partsRes.data || [])
-    setQuizResponses(quizRes.data || [])
+  }
+
+  async function handleRemoveParticipant(participantId: string, challengeId: string) {
+    if (!confirm('Free this slot and remove the team?')) return
+    const res = await removeParticipantFromSlotAction(participantId, challengeId)
+    if (!res.success) alert(res.error)
+    else await loadAll()
   }
 
   async function triggerEvent() {
@@ -737,52 +746,139 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Participants and live quiz scores */}
-                    {chParticipants.length > 0 && (
-                      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '8px', width: '100%' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>
-                          PARTICIPANTS & RESPONSES ({chParticipants.length}/{ch.max_slots}):
+                    {/* DETAILED SLOT MONITOR */}
+                    <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', marginTop: '6px', width: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+                          🎯 CHALLENGE SLOTS ({chParticipants.length}/{ch.max_slots} CLAIMED):
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {chParticipants.map(part => {
-                            const qResp = chQuiz.find(q => q.team_id === part.team_id)
+                        {ch.challenge_type === 'quiz' && (
+                          <span style={{ fontSize: '11px', color: 'var(--neon-lime)', fontWeight: 600 }}>
+                            ⚡ 5-Question Dynamic Civil Quiz
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {Array.from({ length: ch.max_slots }).map((_, slotIdx) => {
+                          const part = chParticipants[slotIdx]
+                          const qResp = part ? chQuiz.find(q => q.team_id === part.team_id) : null
+
+                          if (!part) {
                             return (
-                              <div key={part.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}>
-                                <div>
-                                  <strong>{part.team?.name || 'Team'}</strong>
-                                  {qResp && (
-                                    <span style={{ marginLeft: '8px', color: 'var(--neon-lime)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                                      Score: {qResp.score}/5 ({qResp.time_taken_secs}s)
-                                    </span>
-                                  )}
-                                  <span className={`stat-pill ${part.status === 'success' ? 'stat-pill-safe' : part.status === 'failed' ? 'stat-pill-critical' : 'stat-pill-info'}`} style={{ marginLeft: '8px', fontSize: '10px' }}>
-                                    {part.status.toUpperCase()}
+                              <div 
+                                key={`empty-slot-${ch.id}-${slotIdx}`} 
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  background: 'rgba(255, 255, 255, 0.02)',
+                                  border: '1px dashed rgba(255, 255, 255, 0.15)',
+                                  padding: '8px 12px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  color: 'var(--text-muted)'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'rgba(255, 255, 255, 0.4)' }}>
+                                    SLOT {slotIdx + 1}:
                                   </span>
+                                  <span>⚪ Open Slot — Available for teams to claim</span>
                                 </div>
-                                {ch.status === 'active' && part.status === 'claimed' && (
-                                  <div style={{ display: 'flex', gap: '4px' }}>
-                                    <button 
-                                      className="game-btn game-btn-lime game-btn-sm" 
-                                      style={{ fontSize: '11px', padding: '2px 8px' }}
-                                      onClick={() => approveChallenge(part.id, part.team_id, ch.id, true)}
-                                    >
-                                      ✓ Award Winner (+₹{ch.reward_funds.toLocaleString('en-IN')})
-                                    </button>
-                                    <button 
-                                      className="game-btn game-btn-ghost game-btn-sm" 
-                                      style={{ fontSize: '11px', padding: '2px 8px', color: 'var(--status-critical)' }}
-                                      onClick={() => approveChallenge(part.id, part.team_id, ch.id, false)}
-                                    >
-                                      ✕ Fail
-                                    </button>
-                                  </div>
-                                )}
+                                <span className="stat-pill stat-pill-ghost" style={{ fontSize: '10px' }}>AVAILABLE</span>
                               </div>
                             )
-                          })}
-                        </div>
+                          }
+
+                          const teamName = part.team?.name || 'Unknown Team'
+
+                          return (
+                            <div 
+                              key={part.id} 
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px',
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                padding: '10px 14px',
+                                borderRadius: '6px',
+                                fontSize: '12px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--neon-lime)' }}>
+                                    SLOT {slotIdx + 1}:
+                                  </span>
+                                  <strong style={{ fontSize: '13px', color: '#fff' }}>{teamName}</strong>
+                                  {part.claimed_at && (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                                      ({new Date(part.claimed_at).toLocaleTimeString()})
+                                    </span>
+                                  )}
+                                  <span className={`stat-pill ${part.status === 'success' ? 'stat-pill-safe' : part.status === 'failed' ? 'stat-pill-critical' : 'stat-pill-info'}`} style={{ fontSize: '10px' }}>
+                                    {part.status === 'success' ? '🏆 WON' : part.status === 'failed' ? '❌ FAILED' : '🟡 IN PROGRESS'}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  {ch.status === 'active' && part.status === 'claimed' && (
+                                    <>
+                                      <button 
+                                        className="game-btn game-btn-lime game-btn-sm" 
+                                        style={{ fontSize: '11px', padding: '3px 10px' }}
+                                        onClick={() => approveChallenge(part.id, part.team_id, ch.id, true)}
+                                      >
+                                        ✓ Award Winner (+₹{ch.reward_funds.toLocaleString('en-IN')})
+                                      </button>
+                                      <button 
+                                        className="game-btn game-btn-ghost game-btn-sm" 
+                                        style={{ fontSize: '11px', padding: '3px 10px', color: 'var(--status-critical)' }}
+                                        onClick={() => approveChallenge(part.id, part.team_id, ch.id, false)}
+                                      >
+                                        ✕ Fail
+                                      </button>
+                                    </>
+                                  )}
+                                  {ch.status === 'active' && (
+                                    <button 
+                                      className="game-btn game-btn-ghost game-btn-sm" 
+                                      style={{ fontSize: '10px', padding: '3px 8px', color: 'var(--text-muted)' }}
+                                      title="Remove team from this slot"
+                                      onClick={() => handleRemoveParticipant(part.id, ch.id)}
+                                    >
+                                      🗑️ Free Slot
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Quiz Results if applicable */}
+                              {ch.challenge_type === 'quiz' && (
+                                <div style={{ paddingLeft: '12px', fontSize: '12px' }}>
+                                  {qResp ? (
+                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                      <span style={{ color: 'var(--neon-lime)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                                        📝 Quiz Result: {qResp.score}/5 correct in {qResp.time_taken_secs}s
+                                      </span>
+                                      <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                                        Submitted at {new Date(qResp.created_at).toLocaleTimeString()}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--yellow)', fontStyle: 'italic' }}>
+                                      ⏳ Team is currently solving the quiz...
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
-                    )}
+                    </div>
                   </div>
                 )
               })}

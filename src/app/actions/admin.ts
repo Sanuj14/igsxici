@@ -556,3 +556,42 @@ export async function approveChallenge(participantId: string, teamId: string, ch
   return { success: true }
 }
 
+export async function getAdminChallengesDataAction() {
+  const [chRes, partsRes, quizRes] = await Promise.all([
+    supabaseAdmin.from('challenges').select('*').order('created_at', { ascending: false }),
+    supabaseAdmin.from('challenge_participants').select('*, team:teams(id, name, funds, city_id)').order('claimed_at', { ascending: true }),
+    supabaseAdmin.from('quiz_responses').select('*, team:teams(id, name)').order('created_at', { ascending: false })
+  ])
+
+  return {
+    success: true,
+    challenges: chRes.data || [],
+    participants: partsRes.data || [],
+    quizResponses: quizRes.data || []
+  }
+}
+
+export async function removeParticipantFromSlotAction(participantId: string, challengeId: string) {
+  const { error } = await supabaseAdmin
+    .from('challenge_participants')
+    .delete()
+    .eq('id', participantId)
+
+  if (error) return { success: false, error: error.message }
+
+  const { data: ch } = await supabaseAdmin
+    .from('challenges')
+    .select('claimed_slots')
+    .eq('id', challengeId)
+    .single()
+
+  if (ch && ch.claimed_slots > 0) {
+    await supabaseAdmin
+      .from('challenges')
+      .update({ claimed_slots: ch.claimed_slots - 1 })
+      .eq('id', challengeId)
+  }
+
+  return { success: true }
+}
+
